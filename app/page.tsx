@@ -26,16 +26,9 @@ interface CharData {
   error: boolean;
 }
 
-// FÓRMULA OFICIAL DE XP POR LEVEL
-function getXpForLevel(level: number): number {
-  if (level <= 1) return 0;
-  const n = BigInt(level);
-  const xp = (BigInt(50) * (n * n * n - BigInt(6) * n * n + BigInt(17) * n - BigInt(12))) / BigInt(3);
-  return Number(xp);
-}
-
-// XP INICIAL DO GREEY KINA NO LEVEL 677
-const INITIAL_CHAR_EXP = 5127830738;
+// DADOS BASE DO LEVEL 677 VIA GUILDSTATS
+const CURRENT_LEVEL_XP_TOTAL = 22815100; // XP total necessária no level 677
+const INITIAL_LEVEL_XP_GAINED = 1993138; // XP que você já tem no 677
 
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina"; 
@@ -77,22 +70,20 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // CÁLCULO DIRETO SEM ALTERAR O LEVEL REGISTRADO
+  // CÁLCULO EXATO IGUAL AO GUILDSTATS
   const currentLevel = charData.level || 677;
-  const currentTotalExp = INITIAL_CHAR_EXP + totalXp;
 
-  const startLvlXp = getXpForLevel(currentLevel);
-  const nextLvlXp = getXpForLevel(currentLevel + 1);
+  // XP total obtida no level atual (base + hunts importadas)
+  const currentXpInLevel = INITIAL_LEVEL_XP_GAINED + totalXp;
 
-  const xpNeededForCurrentLvl = nextLvlXp - startLvlXp;
-  const xpGainedInCurrentLvl = currentTotalExp - startLvlXp;
+  // Quanto falta para o level 678
+  const xpRemaining = Math.max(CURRENT_LEVEL_XP_TOTAL - currentXpInLevel, 0);
 
+  // Porcentagem exata (8.73% sem hunts)
   const calculatedProgress = Math.min(
-    Math.max((xpGainedInCurrentLvl / xpNeededForCurrentLvl) * 100, 0),
+    Math.max((currentXpInLevel / CURRENT_LEVEL_XP_TOTAL) * 100, 0),
     100
   );
-
-  const xpRemaining = Math.max(nextLvlXp - currentTotalExp, 0);
 
   const fetchCharData = async () => {
     setCharData((prev) => ({ ...prev, loading: true, error: false }));
@@ -341,12 +332,12 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL FIXO NO 677 + PROGRESSO DE 91.27% */}
+              {/* LEVEL E PROGRESSO 100% FIÉIS AO GUILDSTATS */}
               <div className="mt-2">
                 <div className="flex justify-between text-sm font-semibold mb-1">
                   <span>Level {currentLevel}</span>
                   <span className="text-yellow-400">
-                    {calculatedProgress.toFixed(2)}% pro próx. lvl
+                    {calculatedProgress.toFixed(1)}% pro próx. lvl
                   </span>
                 </div>
                 <div className="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden">
