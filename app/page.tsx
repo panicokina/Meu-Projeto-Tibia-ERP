@@ -57,7 +57,6 @@ export default function Home() {
   const [supplies, setSupplies] = useState(0);
   const [balance, setBalance] = useState(0);
   const [hunts, setHunts] = useState(0);
-  const [tibiaCoins, setTibiaCoins] = useState(0);
   const [totalXp, setTotalXp] = useState(0);
 
   const [history, setHistory] = useState<Hunt[]>([]);
@@ -69,6 +68,9 @@ export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authUsername, setAuthUsername] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+
+  // Cálculo de Tibia Coins dinâmico com base no preço atual
+  const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
   const fetchCharData = async () => {
     setCharData((prev) => ({ ...prev, loading: true, error: false }));
@@ -127,7 +129,6 @@ export default function Home() {
           setSupplies(Number(data.supplies) || 0);
           setBalance(Number(data.balance) || 0);
           setHunts(Number(data.hunts) || 0);
-          setTibiaCoins(Number(data.tibia_coins) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXp(Number(data.total_xp) || 0);
           setHistory(data.history || []);
@@ -148,7 +149,6 @@ export default function Home() {
     newSupplies: number,
     newBalance: number,
     newHunts: number,
-    newTc: number,
     newTcPrice: number,
     newXp: number,
     newHistory: Hunt[]
@@ -162,7 +162,7 @@ export default function Home() {
         supplies: newSupplies,
         balance: newBalance,
         hunts: newHunts,
-        tibia_coins: newTc,
+        tibia_coins: newTcPrice > 0 ? newBalance / newTcPrice : 0,
         tc_price: newTcPrice,
         total_xp: newXp,
         history: newHistory,
@@ -223,16 +223,13 @@ export default function Home() {
     const lootValue = parseTibiaValue(/Loot:\s*([^\r\n]+)/i);
     const suppliesValue = parseTibiaValue(/Supplies:\s*([^\r\n]+)/i);
     const balanceValue = parseTibiaValue(/Balance:\s*([^\r\n]+)/i);
-
-    // Captura estritamente 'XP Gain:' no início da linha até o fim da linha
     const xpValue = parseTibiaValue(/(?:^|[\r\n])\s*XP Gain:\s*([^\r\n]+)/i);
 
-    const tcEarned = balanceValue / tcPrice;
+    const tcEarned = tcPrice > 0 ? balanceValue / tcPrice : 0;
 
     const updatedLoot = loot + lootValue;
     const updatedSupplies = supplies + suppliesValue;
     const updatedBalance = balance + balanceValue;
-    const updatedTc = tibiaCoins + tcEarned;
     const updatedXp = totalXp + xpValue;
     const updatedHunts = hunts + 1;
 
@@ -251,7 +248,6 @@ export default function Home() {
     setLoot(updatedLoot);
     setSupplies(updatedSupplies);
     setBalance(updatedBalance);
-    setTibiaCoins(updatedTc);
     setTotalXp(updatedXp);
     setHunts(updatedHunts);
     setHistory(updatedHistory);
@@ -263,7 +259,6 @@ export default function Home() {
       updatedSupplies,
       updatedBalance,
       updatedHunts,
-      updatedTc,
       tcPrice,
       updatedXp,
       updatedHistory
@@ -280,7 +275,6 @@ export default function Home() {
       setSupplies(0);
       setBalance(0);
       setHunts(0);
-      setTibiaCoins(0);
       setTotalXp(0);
       setHistory([]);
       setShowAuthModal(false);
@@ -288,7 +282,7 @@ export default function Home() {
       setAuthPassword("");
 
       // Zera o banco no Supabase
-      await saveDataToSupabase(0, 0, 0, 0, 0, tcPrice, 0, []);
+      await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, []);
       alert("Dados apagados com sucesso do banco de dados!");
     } else {
       alert("Usuário ou senha incorretos! Tentativa de trollagem bloqueada. 🛡️");
@@ -297,7 +291,7 @@ export default function Home() {
 
   const handleTcPriceChange = (val: number) => {
     setTcPrice(val);
-    saveDataToSupabase(loot, supplies, balance, hunts, tibiaCoins, val, totalXp, history);
+    saveDataToSupabase(loot, supplies, balance, hunts, val, totalXp, history);
   };
 
   const progressGoal = Math.min((tibiaCoins / 5000) * 100, 100);
@@ -368,7 +362,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* TIBIA COINS */}
+            {/* TIBIA COINS (Calculado em tempo real com base no tcPrice) */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Tibia Coins</h2>
               <div className="flex items-center gap-2">
@@ -511,43 +505,46 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {history.map((hunt) => (
-                      <tr key={hunt.id} className="border-b border-slate-800 hover:bg-[#0B1020]/50">
-                        <td className="py-2">{hunt.date}</td>
-                        <td className="text-emerald-400 font-medium">
-                          <div className="flex items-center gap-1.5">
-                            <img src={REALITY_REAVER_ICON} alt="XP" className="w-4 h-4 object-contain" />
-                            {(hunt.xp || 0) >= 1_000_000
-                              ? `${((hunt.xp || 0) / 1_000_000).toFixed(2)}kk`
-                              : (hunt.xp || 0).toLocaleString("pt-BR")}
-                          </div>
-                        </td>
-                        <td>
-                          <div className="flex items-center gap-1.5">
-                            <img src={BOOTS_OF_HASTE_ICON} alt="Loot" className="w-4 h-4 object-contain" />
-                            {hunt.loot.toLocaleString("pt-BR")} GP
-                          </div>
-                        </td>
-                        <td>
-                          <div className="flex items-center gap-1.5">
-                            <img src={GREAT_MANA_POTION_ICON} alt="Supplies" className="w-4 h-4 object-contain" />
-                            {hunt.supplies.toLocaleString("pt-BR")} GP
-                          </div>
-                        </td>
-                        <td className={hunt.balance >= 0 ? "text-green-400" : "text-red-400"}>
-                          <div className="flex items-center gap-1.5">
-                            <img src={CRYSTAL_COIN_ICON} alt="CC" className="w-4 h-4 object-contain" />
-                            {hunt.balance.toLocaleString("pt-BR")} GP
-                          </div>
-                        </td>
-                        <td>
-                          <div className="flex items-center gap-1.5">
-                            <img src={TIBIA_COIN_ICON} alt="TC" className="w-4 h-4 object-contain" />
-                            {hunt.tc.toFixed(1)} TC
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {history.map((hunt) => {
+                      const huntTc = tcPrice > 0 ? hunt.balance / tcPrice : 0;
+                      return (
+                        <tr key={hunt.id} className="border-b border-slate-800 hover:bg-[#0B1020]/50">
+                          <td className="py-2">{hunt.date}</td>
+                          <td className="text-emerald-400 font-medium">
+                            <div className="flex items-center gap-1.5">
+                              <img src={REALITY_REAVER_ICON} alt="XP" className="w-4 h-4 object-contain" />
+                              {(hunt.xp || 0) >= 1_000_000
+                                ? `${((hunt.xp || 0) / 1_000_000).toFixed(2)}kk`
+                                : (hunt.xp || 0).toLocaleString("pt-BR")}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1.5">
+                              <img src={BOOTS_OF_HASTE_ICON} alt="Loot" className="w-4 h-4 object-contain" />
+                              {hunt.loot.toLocaleString("pt-BR")} GP
+                            </div>
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1.5">
+                              <img src={GREAT_MANA_POTION_ICON} alt="Supplies" className="w-4 h-4 object-contain" />
+                              {hunt.supplies.toLocaleString("pt-BR")} GP
+                            </div>
+                          </td>
+                          <td className={hunt.balance >= 0 ? "text-green-400" : "text-red-400"}>
+                            <div className="flex items-center gap-1.5">
+                              <img src={CRYSTAL_COIN_ICON} alt="CC" className="w-4 h-4 object-contain" />
+                              {hunt.balance.toLocaleString("pt-BR")} GP
+                            </div>
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1.5">
+                              <img src={TIBIA_COIN_ICON} alt="TC" className="w-4 h-4 object-contain" />
+                              {huntTc.toFixed(1)} TC
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
