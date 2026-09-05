@@ -28,6 +28,9 @@ interface CharData {
   error: boolean;
 }
 
+// XP BASE INICIAL FIXA DO GREEY KINA (Level 677)
+const INITIAL_BASE_EXP = 5127830738;
+
 // FÓRMULAS OFICIAIS DE XP DO TIBIA
 function getXpForLevel(level: number): number {
   return (50 / 3) * (Math.pow(level, 3) - 6 * Math.pow(level, 2) + 17 * level - 12);
@@ -59,7 +62,7 @@ export default function Home() {
 
   const [charData, setCharData] = useState<CharData>({
     name: CHARACTER_NAME,
-    level: 0,
+    level: 677,
     vocation: "Carregando...",
     world: "Carregando...",
     progress: 0,
@@ -75,7 +78,6 @@ export default function Home() {
   const [balance, setBalance] = useState(0);
   const [hunts, setHunts] = useState(0);
   const [totalXp, setTotalXp] = useState(0);
-  const [charTotalExp, setCharTotalExp] = useState(0); // XP total oficial do char
 
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -90,10 +92,14 @@ export default function Home() {
   // Cálculo de Tibia Coins dinâmico
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // Recalcula progresso do Level baseado na XP Total do char ou XP base do level + hunts
-  const calculatedProgress = charTotalExp > 0
-    ? getLevelProgress(charData.level, charTotalExp)
-    : getLevelProgress(charData.level, getXpForLevel(charData.level) + totalXp);
+  // XP Atual Total do Char = XP Base Inicial (5.127.830.738) + XP Acumulada das Hunts
+  const currentTotalExp = INITIAL_BASE_EXP + totalXp;
+
+  // Porcentagem calculada automaticamente em tempo real
+  const calculatedProgress = getLevelProgress(
+    charData.level || 677,
+    currentTotalExp
+  );
 
   const fetchCharData = async () => {
     setCharData((prev) => ({ ...prev, loading: true, error: false }));
@@ -105,17 +111,14 @@ export default function Home() {
       const character = json.character?.character;
 
       if (character) {
-        const lvl = character.level || 0;
-        const exp = character.experience || 0;
-
-        setCharTotalExp(exp);
+        const lvl = character.level || 677;
 
         setCharData({
           name: character.name,
           level: lvl,
           vocation: character.vocation,
           world: character.world,
-          progress: getLevelProgress(lvl, exp),
+          progress: getLevelProgress(lvl, currentTotalExp),
           loading: false,
           error: false,
         });
@@ -159,7 +162,6 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXp(Number(data.total_xp) || 0);
-          if (data.char_total_exp) setCharTotalExp(Number(data.char_total_exp));
           setHistory(data.history || []);
         }
       } catch (err) {
@@ -180,8 +182,7 @@ export default function Home() {
     newHunts: number,
     newTcPrice: number,
     newXp: number,
-    newHistory: Hunt[],
-    newCharExp?: number
+    newHistory: Hunt[]
   ) => {
     if (!supabaseUrl || !supabaseAnonKey) return;
 
@@ -195,7 +196,6 @@ export default function Home() {
         tibia_coins: newTcPrice > 0 ? newBalance / newTcPrice : 0,
         tc_price: newTcPrice,
         total_xp: newXp,
-        char_total_exp: newCharExp !== undefined ? newCharExp : charTotalExp,
         history: newHistory,
         updated_at: new Date().toISOString(),
       });
@@ -262,9 +262,6 @@ export default function Home() {
     const updatedBalance = balance + balanceValue;
     const updatedXp = totalXp + xpValue;
     const updatedHunts = hunts + 1;
-    const updatedCharExp = charTotalExp > 0 ? charTotalExp + xpValue : 0;
-
-    if (updatedCharExp > 0) setCharTotalExp(updatedCharExp);
 
     const newHunt: Hunt = {
       id: Date.now(),
@@ -293,8 +290,7 @@ export default function Home() {
       updatedHunts,
       tcPrice,
       updatedXp,
-      updatedHistory,
-      updatedCharExp
+      updatedHistory
     );
   }
 
@@ -309,13 +305,12 @@ export default function Home() {
       setBalance(0);
       setHunts(0);
       setTotalXp(0);
-      setCharTotalExp(0);
       setHistory([]);
       setShowAuthModal(false);
       setAuthUsername("");
       setAuthPassword("");
 
-      await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], 0);
+      await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, []);
       alert("Dados apagados com sucesso do banco de dados!");
     } else {
       alert("Usuário ou senha incorretos! Tentativa de trollagem bloqueada. 🛡️");
@@ -325,11 +320,6 @@ export default function Home() {
   const handleTcPriceChange = (val: number) => {
     setTcPrice(val);
     saveDataToSupabase(loot, supplies, balance, hunts, val, totalXp, history);
-  };
-
-  const handleCharExpChange = (val: number) => {
-    setCharTotalExp(val);
-    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXp, history, val);
   };
 
   const progressGoal = Math.min((tibiaCoins / 5000) * 100, 100);
@@ -370,7 +360,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL E PROGRESSO DE XP CALCULADO */}
+              {/* LEVEL E PROGRESSO DE XP CALCULADO AUTOMÁTICO */}
               <div className="mt-2">
                 <div className="flex justify-between text-sm font-semibold mb-1">
                   <span>Level {charData.loading ? "..." : charData.level}</span>
@@ -470,37 +460,18 @@ export default function Home() {
           <p className="mt-2 text-sm text-gray-400">{progressGoal.toFixed(2)}%</p>
         </div>
 
-        {/* CONFIGURAÇÕES DE TC E XP TOTAL */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-[#151B31] p-6 rounded-xl">
-            <div className="flex items-center gap-2 mb-4">
-              <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-5 h-5 object-contain" />
-              <h2 className="font-semibold">Valor Atual da Tibia Coin</h2>
-            </div>
-            <input
-              type="number"
-              value={tcPrice}
-              onChange={(e) => handleTcPriceChange(Number(e.target.value))}
-              className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
-            />
+        {/* VALOR DA TIBIA COIN */}
+        <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
+          <div className="flex items-center gap-2 mb-4">
+            <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-5 h-5 object-contain" />
+            <h2 className="font-semibold">Valor Atual da Tibia Coin</h2>
           </div>
-
-          <div className="bg-[#151B31] p-6 rounded-xl">
-            <div className="flex items-center gap-2 mb-4">
-              <img src={REALITY_REAVER_ICON} alt="XP" className="w-5 h-5 object-contain" />
-              <h2 className="font-semibold">XP Total Atual do Char (Sync de % Level)</h2>
-            </div>
-            <input
-              type="number"
-              value={charTotalExp || ""}
-              placeholder="Ex: 5127830738"
-              onChange={(e) => handleCharExpChange(Number(e.target.value))}
-              className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 text-emerald-400 font-mono"
-            />
-            <p className="text-xs text-gray-400 mt-2">
-              A XP é somada automaticamente ao importar hunts! Se desejar calibrar exatamente com seu jogo, insira sua XP Total atual acima (Ex: 5127830738).
-            </p>
-          </div>
+          <input
+            type="number"
+            value={tcPrice}
+            onChange={(e) => handleTcPriceChange(Number(e.target.value))}
+            className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
+          />
         </div>
 
         {/* IMPORTAR HUNT */}
