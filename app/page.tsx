@@ -26,9 +26,9 @@ interface CharData {
   error: boolean;
 }
 
-// DADOS BASE DO LEVEL 677 VIA GUILDSTATS
-const CURRENT_LEVEL_XP_TOTAL = 22815100; // XP total necessária no level 677
-const INITIAL_LEVEL_XP_GAINED = 1993138; // XP que você já tem no 677
+// DADOS BASE DO LEVEL 677 (GUILDSTATS)
+const XP_FOR_LEVEL_677_TO_678 = 22815100; // Total de XP necessário do 677 ao 678
+const INITIAL_XP_IN_LEVEL = 1993138;      // XP inicial já conquistado no 677 (8.7%)
 
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina"; 
@@ -70,13 +70,18 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // CÁLCULO DE PROGRESSO
+  // CÁLCULO DE PROGRESSO EXATO
   const currentLevel = charData.level || 677;
-  const currentXpInLevel = INITIAL_LEVEL_XP_GAINED + totalXp;
-  const xpRemaining = Math.max(CURRENT_LEVEL_XP_TOTAL - currentXpInLevel, 0);
+  
+  // Soma o progresso base do level + XP acumulada nas Hunts importadas
+  const totalXpInCurrentLevel = INITIAL_XP_IN_LEVEL + totalXp;
+  
+  // Quanto XP ainda falta para o level 678
+  const xpRemaining = Math.max(XP_FOR_LEVEL_677_TO_678 - totalXpInCurrentLevel, 0);
 
+  // Porcentagem calculada do level
   const calculatedProgress = Math.min(
-    Math.max((currentXpInLevel / CURRENT_LEVEL_XP_TOTAL) * 100, 0),
+    Math.max((totalXpInCurrentLevel / XP_FOR_LEVEL_677_TO_678) * 100, 0),
     100
   );
 
@@ -322,7 +327,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* BARRA FIXA - ESPERA O CARREGAMENTO INICIAL */}
+              {/* BARRA DE PROGRESSO CORRIGIDA */}
               <div className="mt-2 min-h-[60px]">
                 {!isLoaded ? (
                   <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
@@ -349,7 +354,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* METRICAS */}
+          {/* MÉTRICAS */}
           <div className="xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
