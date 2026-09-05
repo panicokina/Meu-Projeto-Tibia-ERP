@@ -26,9 +26,19 @@ interface CharData {
   error: boolean;
 }
 
-// DADOS BASE DO LEVEL 677 (GUILDSTATS)
-const XP_FOR_LEVEL_677_TO_678 = 22815100; // Total de XP necessário do 677 ao 678
-const INITIAL_XP_IN_LEVEL = 1993138;      // XP inicial já conquistado no 677 (8.7%)
+// -------------------------------------------------------------
+// FÓRMULAS MATEMÁTICAS OFICIAIS DO TIBIA
+// -------------------------------------------------------------
+// Retorna a XP acumulada total necessária para atingir determinado Level L
+function getXpForLevel(level: number): number {
+  if (level <= 1) return 0;
+  return Math.floor((50 / 3) * (Math.pow(level, 3) - 6 * Math.pow(level, 2) + 17 * level - 12));
+}
+
+// Retorna a quantidade exata de XP necessária para ir do Level L para L+1
+function getXpToNextLevel(level: number): number {
+  return 50 * Math.pow(level, 2) - 150 * level + 100;
+}
 
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina"; 
@@ -70,18 +80,25 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // CÁLCULO DE PROGRESSO EXATO
+  // -------------------------------------------------------------
+  // CÁLCULO DINÂMICO DE PROGRESSO COM A FÓRMULA OFICIAL
+  // -------------------------------------------------------------
   const currentLevel = charData.level || 677;
-  
-  // Soma o progresso base do level + XP acumulada nas Hunts importadas
-  const totalXpInCurrentLevel = INITIAL_XP_IN_LEVEL + totalXp;
-  
-  // Quanto XP ainda falta para o level 678
-  const xpRemaining = Math.max(XP_FOR_LEVEL_677_TO_678 - totalXpInCurrentLevel, 0);
 
-  // Porcentagem calculada do level
+  // XP necessária para avançar do level atual pro próximo (ex: 677 -> 678 é 22.815.100)
+  const xpRequiredForThisLevel = getXpToNextLevel(currentLevel);
+
+  // Exemplo no Lvl 677 com 8.7% já conquistado no momento da captura
+  // Se o level for o base 677, consideramos a XP base inicial de 1.993.138 GP + XP das hunts importadas
+  const initialBaseXp = currentLevel === 677 ? 1993138 : 0;
+  const currentXpInLevel = initialBaseXp + totalXp;
+
+  // Cálculo do XP restante para o próximo level
+  const xpRemaining = Math.max(xpRequiredForThisLevel - currentXpInLevel, 0);
+
+  // Porcentagem calculada dinamicamente
   const calculatedProgress = Math.min(
-    Math.max((totalXpInCurrentLevel / XP_FOR_LEVEL_677_TO_678) * 100, 0),
+    Math.max((currentXpInLevel / xpRequiredForThisLevel) * 100, 0),
     100
   );
 
@@ -327,7 +344,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* BARRA DE PROGRESSO CORRIGIDA */}
+              {/* BARRA DE PROGRESSO DINÂMICA */}
               <div className="mt-2 min-h-[60px]">
                 {!isLoaded ? (
                   <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
