@@ -201,6 +201,7 @@ export default function Home() {
         return isNegative ? -num : num;
       }
 
+      // Se for formato padrão do Tibia Ex: 22,500,000 ou 22.500.000
       clean = clean.replace(/[.,]/g, "");
       let num = parseInt(clean, 10) || 0;
 
@@ -219,12 +220,12 @@ export default function Home() {
       return;
     }
 
-    const lootValue = parseTibiaValue(/Loot:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
-    const suppliesValue = parseTibiaValue(/Supplies:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
-    const balanceValue = parseTibiaValue(/Balance:\s*([-\d.,kK]+)/i);
+    const lootValue = parseTibiaValue(/Loot:\s*([^\r\n]+)/i);
+    const suppliesValue = parseTibiaValue(/Supplies:\s*([^\r\n]+)/i);
+    const balanceValue = parseTibiaValue(/Balance:\s*([^\r\n]+)/i);
 
-    // Captura estritamente 'XP Gain:' no início da linha, ignorando 'Raw XP Gain:' e 'XP/h:'
-    const xpValue = parseTibiaValue(/(?:^|[\r\n])\s*XP Gain:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
+    // Captura estritamente 'XP Gain:' no início da linha até o fim da linha
+    const xpValue = parseTibiaValue(/(?:^|[\r\n])\s*XP Gain:\s*([^\r\n]+)/i);
 
     const tcEarned = balanceValue / tcPrice;
 
@@ -516,7 +517,9 @@ export default function Home() {
                         <td className="text-emerald-400 font-medium">
                           <div className="flex items-center gap-1.5">
                             <img src={REALITY_REAVER_ICON} alt="XP" className="w-4 h-4 object-contain" />
-                            {(hunt.xp || 0).toLocaleString("pt-BR")}
+                            {(hunt.xp || 0) >= 1_000_000
+                              ? `${((hunt.xp || 0) / 1_000_000).toFixed(2)}kk`
+                              : (hunt.xp || 0).toLocaleString("pt-BR")}
                           </div>
                         </td>
                         <td>
