@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// Inicializa o cliente do Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface Hunt {
   id: number;
@@ -96,44 +102,76 @@ export default function Home() {
     fetchCharData();
   }, []);
 
-  // 1. Carrega dados do localStorage
+  // 1. Carrega dados do Supabase
   useEffect(() => {
-    const saved = localStorage.getItem("tibiaERP");
-    if (saved) {
+    async function loadDataFromSupabase() {
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.warn("Chaves do Supabase não configuradas no .env.local");
+        setIsLoaded(true);
+        return;
+      }
+
       try {
-        const data = JSON.parse(saved);
-        setLoot(data.loot || 0);
-        setSupplies(data.supplies || 0);
-        setBalance(data.balance || 0);
-        setHunts(data.hunts || 0);
-        setTibiaCoins(data.tibiaCoins || 0);
-        setTcPrice(data.tcPrice || 42500);
-        setTotalXp(data.totalXp || 0);
-        setHistory(data.history || []);
-      } catch (error) {
-        console.error("Erro ao carregar dados do localStorage:", error);
+        const { data, error } = await supabase
+          .from("tibia_dashboard")
+          .select("*")
+          .eq("id", "main")
+          .single();
+
+        if (error && error.code !== "PGRST116") {
+          console.error("Erro ao carregar do Supabase:", error);
+        }
+
+        if (data) {
+          setLoot(Number(data.loot) || 0);
+          setSupplies(Number(data.supplies) || 0);
+          setBalance(Number(data.balance) || 0);
+          setHunts(Number(data.hunts) || 0);
+          setTibiaCoins(Number(data.tibia_coins) || 0);
+          setTcPrice(Number(data.tc_price) || 42500);
+          setTotalXp(Number(data.total_xp) || 0);
+          setHistory(data.history || []);
+        }
+      } catch (err) {
+        console.error("Erro na conexão com Supabase:", err);
+      } finally {
+        setIsLoaded(true);
       }
     }
-    setIsLoaded(true);
+
+    loadDataFromSupabase();
   }, []);
 
-  // 2. Salva no localStorage
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem(
-      "tibiaERP",
-      JSON.stringify({
-        loot,
-        supplies,
-        balance,
-        hunts,
-        tibiaCoins,
-        tcPrice,
-        totalXp,
-        history,
-      })
-    );
-  }, [loot, supplies, balance, hunts, tibiaCoins, tcPrice, totalXp, history, isLoaded]);
+  // 2. Salva no Supabase sempre que houver alteração
+  const saveDataToSupabase = async (
+    newLoot: number,
+    newSupplies: number,
+    newBalance: number,
+    newHunts: number,
+    newTc: number,
+    newTcPrice: number,
+    newXp: number,
+    newHistory: Hunt[]
+  ) => {
+    if (!supabaseUrl || !supabaseAnonKey) return;
+
+    try {
+      await supabase.from("tibia_dashboard").upsert({
+        id: "main",
+        loot: newLoot,
+        supplies: newSupplies,
+        balance: newBalance,
+        hunts: newHunts,
+        tibia_coins: newTc,
+        tc_price: newTcPrice,
+        total_xp: newXp,
+        history: newHistory,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Erro ao salvar no Supabase:", err);
+    }
+  };
 
   function importHunt() {
     setErrorMessage("");
@@ -143,7 +181,6 @@ export default function Home() {
       return;
     }
 
-    // Função para extrair e converter números do Hunt Analyzer do Tibia
     const parseTibiaValue = (prefixPattern: RegExp) => {
       const match = analyzer.match(prefixPattern);
       if (!match) return 0;
@@ -173,7 +210,6 @@ export default function Home() {
     const hasLoot = /Loot:\s*/i.test(analyzer);
     const hasSupplies = /Supplies:\s*/i.test(analyzer);
     const hasBalance = /Balance:\s*/i.test(analyzer);
-    // Garante busca do "XP Gain:" que NÃO seja précédido por "Raw "
     const hasXp = /(?:^|\n)\s*(?<!Raw\s*)XP Gain:\s*/i.test(analyzer);
 
     if (!hasLoot || !hasSupplies || !hasBalance || !hasXp) {
@@ -186,18 +222,16 @@ export default function Home() {
     const lootValue = parseTibiaValue(/Loot:\s*([^\r\n]+)/i);
     const suppliesValue = parseTibiaValue(/Supplies:\s*([^\r\n]+)/i);
     const balanceValue = parseTibiaValue(/Balance:\s*([^\r\n]+)/i);
-    
-    // Expressão regular que ignora "Raw XP Gain" e pega estritamente "XP Gain:"
     const xpValue = parseTibiaValue(/(?:^|\n)\s*(?<!Raw\s*)XP Gain:\s*([^\r\n]+)/i);
 
     const tcEarned = balanceValue / tcPrice;
 
-    setLoot((prev) => prev + lootValue);
-    setSupplies((prev) => prev + suppliesValue);
-    setBalance((prev) => prev + balanceValue);
-    setTibiaCoins((prev) => prev + tcEarned);
-    setTotalXp((prev) => prev + xpValue);
-    setHunts((prev) => prev + 1);
+    const updatedLoot = loot + lootValue;
+    const updatedSupplies = supplies + suppliesValue;
+    const updatedBalance = balance + balanceValue;
+    const updatedTc = tibiaCoins + tcEarned;
+    const updatedXp = totalXp + xpValue;
+    const updatedHunts = hunts + 1;
 
     const newHunt: Hunt = {
       id: Date.now(),
@@ -209,17 +243,36 @@ export default function Home() {
       xp: xpValue,
     };
 
-    setHistory((prev) => [newHunt, ...prev]);
+    const updatedHistory = [newHunt, ...history];
+
+    setLoot(updatedLoot);
+    setSupplies(updatedSupplies);
+    setBalance(updatedBalance);
+    setTibiaCoins(updatedTc);
+    setTotalXp(updatedXp);
+    setHunts(updatedHunts);
+    setHistory(updatedHistory);
     setAnalyzer("");
+
+    // Salva na Nuvem (Supabase)
+    saveDataToSupabase(
+      updatedLoot,
+      updatedSupplies,
+      updatedBalance,
+      updatedHunts,
+      updatedTc,
+      tcPrice,
+      updatedXp,
+      updatedHistory
+    );
   }
 
   function handleClearDataClick() {
     setShowAuthModal(true);
   }
 
-  function confirmClearData() {
+  async function confirmClearData() {
     if (authUsername === "panicao" && authPassword === "panicao") {
-      localStorage.removeItem("tibiaERP");
       setLoot(0);
       setSupplies(0);
       setBalance(0);
@@ -230,11 +283,19 @@ export default function Home() {
       setShowAuthModal(false);
       setAuthUsername("");
       setAuthPassword("");
-      alert("Dados apagados com sucesso!");
+
+      // Zera o banco no Supabase
+      await saveDataToSupabase(0, 0, 0, 0, 0, tcPrice, 0, []);
+      alert("Dados apagados com sucesso do banco de dados!");
     } else {
       alert("Usuário ou senha incorretos! Tentativa de trollagem bloqueada. 🛡️");
     }
   }
+
+  const handleTcPriceChange = (val: number) => {
+    setTcPrice(val);
+    saveDataToSupabase(loot, supplies, balance, hunts, tibiaCoins, val, totalXp, history);
+  };
 
   const progressGoal = Math.min((tibiaCoins / 5000) * 100, 100);
 
@@ -381,7 +442,7 @@ export default function Home() {
           <input
             type="number"
             value={tcPrice}
-            onChange={(e) => setTcPrice(Number(e.target.value))}
+            onChange={(e) => handleTcPriceChange(Number(e.target.value))}
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
           />
         </div>
