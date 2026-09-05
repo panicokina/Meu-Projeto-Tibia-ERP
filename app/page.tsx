@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Sidebar from "@/components/Sidebar";
 
 interface Hunt {
   id: number;
@@ -10,6 +9,7 @@ interface Hunt {
   supplies: number;
   balance: number;
   tc: number;
+  xp: number;
 }
 
 export default function Home() {
@@ -21,9 +21,10 @@ export default function Home() {
   const [balance, setBalance] = useState(0);
   const [hunts, setHunts] = useState(0);
   const [tibiaCoins, setTibiaCoins] = useState(0);
+  const [totalXp, setTotalXp] = useState(0);
 
   const [history, setHistory] = useState<Hunt[]>([]);
-  
+
   // Flag para controle de carregamento do localStorage
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -41,6 +42,7 @@ export default function Home() {
         setHunts(data.hunts || 0);
         setTibiaCoins(data.tibiaCoins || 0);
         setTcPrice(data.tcPrice || 42500);
+        setTotalXp(data.totalXp || 0);
         setHistory(data.history || []);
       } catch (error) {
         console.error("Erro ao carregar dados do localStorage:", error);
@@ -62,6 +64,7 @@ export default function Home() {
         hunts,
         tibiaCoins,
         tcPrice,
+        totalXp,
         history,
       })
     );
@@ -72,6 +75,7 @@ export default function Home() {
     hunts,
     tibiaCoins,
     tcPrice,
+    totalXp,
     history,
     isLoaded,
   ]);
@@ -80,6 +84,9 @@ export default function Home() {
     const lootMatch = analyzer.match(/Loot:\s*([\d.]+)/);
     const suppliesMatch = analyzer.match(/Supplies:\s*([\d.]+)/);
     const balanceMatch = analyzer.match(/Balance:\s*([\d.]+)/);
+    
+    // Tenta capturar Raw XP Gain primeiro; se não achar, busca XP Gain padrão
+    const xpMatch = analyzer.match(/Raw XP Gain:\s*([\d.]+)/) || analyzer.match(/XP Gain:\s*([\d.]+)/);
 
     const lootValue = lootMatch
       ? Number(lootMatch[1].replace(/\./g, ""))
@@ -93,12 +100,17 @@ export default function Home() {
       ? Number(balanceMatch[1].replace(/\./g, ""))
       : 0;
 
+    const xpValue = xpMatch
+      ? Number(xpMatch[1].replace(/\./g, ""))
+      : 0;
+
     const tcEarned = balanceValue / tcPrice;
 
     setLoot((prev) => prev + lootValue);
     setSupplies((prev) => prev + suppliesValue);
     setBalance((prev) => prev + balanceValue);
     setTibiaCoins((prev) => prev + tcEarned);
+    setTotalXp((prev) => prev + xpValue);
     setHunts((prev) => prev + 1);
 
     const newHunt: Hunt = {
@@ -108,6 +120,7 @@ export default function Home() {
       supplies: suppliesValue,
       balance: balanceValue,
       tc: tcEarned,
+      xp: xpValue,
     };
 
     setHistory((prev) => [newHunt, ...prev]);
@@ -129,6 +142,7 @@ export default function Home() {
     setBalance(0);
     setHunts(0);
     setTibiaCoins(0);
+    setTotalXp(0);
     setHistory([]);
   }
 
@@ -138,76 +152,82 @@ export default function Home() {
   );
 
   return (
-    <div className="flex min-h-screen bg-[#0B1020] text-white">
-      <Sidebar />
-
-      <main className="flex-1 p-8">
-        <h1 className="text-4xl font-bold mb-8">
-          Tibia ERP
+    <div className="min-h-screen bg-[#0B1020] text-white">
+      <main className="max-w-[1400px] mx-auto p-8">
+        <h1 className="text-4xl font-bold mb-8 text-yellow-400">
+          DashBoard Panicão
         </h1>
 
-        <div className="grid grid-cols-5 gap-4">
-          <div className="bg-[#151B31] p-6 rounded-xl">
-            <h2>Saldo Consolidado</h2>
-            <p className="text-2xl text-green-400">
+        {/* Grid ajustado para ter melhor espaçamento */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="bg-[#151B31] p-5 rounded-xl">
+            <h2 className="text-gray-400 text-sm mb-1 whitespace-nowrap">Saldo Consolidado</h2>
+            <p className="text-xl font-bold text-green-400 whitespace-nowrap">
               {balance.toLocaleString("pt-BR")} GP
             </p>
           </div>
 
-          <div className="bg-[#151B31] p-6 rounded-xl">
-            <h2>Tibia Coins</h2>
-            <p className="text-2xl text-yellow-400">
+          <div className="bg-[#151B31] p-5 rounded-xl">
+            <h2 className="text-gray-400 text-sm mb-1 whitespace-nowrap">Tibia Coins</h2>
+            <p className="text-xl font-bold text-yellow-400 whitespace-nowrap">
               {tibiaCoins.toFixed(1)} TC
             </p>
           </div>
 
-          <div className="bg-[#151B31] p-6 rounded-xl">
-            <h2>Loot Total</h2>
-            <p className="text-2xl">
+          <div className="bg-[#151B31] p-5 rounded-xl">
+            <h2 className="text-gray-400 text-sm mb-1 whitespace-nowrap">XP Acumulada</h2>
+            <p className="text-xl font-bold text-emerald-400 whitespace-nowrap">
+              {totalXp.toLocaleString("pt-BR")}
+            </p>
+          </div>
+
+          <div className="bg-[#151B31] p-5 rounded-xl">
+            <h2 className="text-gray-400 text-sm mb-1 whitespace-nowrap">Loot Total</h2>
+            <p className="text-xl font-bold whitespace-nowrap">
               {loot.toLocaleString("pt-BR")} GP
             </p>
           </div>
 
-          <div className="bg-[#151B31] p-6 rounded-xl">
-            <h2>Supplies</h2>
-            <p className="text-2xl">
+          <div className="bg-[#151B31] p-5 rounded-xl">
+            <h2 className="text-gray-400 text-sm mb-1 whitespace-nowrap">Supplies</h2>
+            <p className="text-xl font-bold whitespace-nowrap">
               {supplies.toLocaleString("pt-BR")} GP
             </p>
           </div>
 
-          <div className="bg-[#151B31] p-6 rounded-xl">
-            <h2>Hunts</h2>
-            <p className="text-2xl">
+          <div className="bg-[#151B31] p-5 rounded-xl">
+            <h2 className="text-gray-400 text-sm mb-1 whitespace-nowrap">Hunts</h2>
+            <p className="text-xl font-bold whitespace-nowrap">
               {hunts}
             </p>
           </div>
         </div>
 
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
-          <h2 className="mb-2">
+          <h2 className="mb-2 font-semibold">
             Meta 5000 Tibia Coins
           </h2>
 
-          <p className="mb-3">
+          <p className="mb-3 text-gray-300">
             {tibiaCoins.toFixed(1)} / 5000 TC
           </p>
 
           <div className="w-full bg-gray-700 h-4 rounded">
             <div
-              className="bg-yellow-500 h-4 rounded"
+              className="bg-yellow-500 h-4 rounded transition-all duration-300"
               style={{
                 width: `${progress}%`,
               }}
             />
           </div>
 
-          <p className="mt-2">
+          <p className="mt-2 text-sm text-gray-400">
             {progress.toFixed(2)}%
           </p>
         </div>
 
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
-          <h2 className="mb-4">
+          <h2 className="mb-4 font-semibold">
             Valor Atual da Tibia Coin
           </h2>
 
@@ -217,12 +237,12 @@ export default function Home() {
             onChange={(e) =>
               setTcPrice(Number(e.target.value))
             }
-            className="w-full bg-[#0B1020] p-3 rounded"
+            className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
           />
         </div>
 
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
-          <h2 className="mb-4">
+          <h2 className="mb-4 font-semibold">
             Importar Hunt Analyzer
           </h2>
 
@@ -231,21 +251,21 @@ export default function Home() {
             onChange={(e) =>
               setAnalyzer(e.target.value)
             }
-            className="w-full h-64 bg-[#0B1020] p-4 rounded"
+            className="w-full h-64 bg-[#0B1020] p-4 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
             placeholder="Cole aqui o Hunt Analyzer..."
           />
 
           <div className="flex gap-3 mt-4">
             <button
               onClick={importHunt}
-              className="bg-yellow-500 text-black px-6 py-2 rounded font-bold"
+              className="bg-yellow-500 text-black px-6 py-2 rounded font-bold hover:bg-yellow-400 transition"
             >
               Importar Hunt
             </button>
 
             <button
               onClick={clearData}
-              className="bg-red-600 px-6 py-2 rounded font-bold"
+              className="bg-red-600 px-6 py-2 rounded font-bold hover:bg-red-500 transition"
             >
               Limpar Dados
             </button>
@@ -253,15 +273,16 @@ export default function Home() {
         </div>
 
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
-          <h2 className="text-2xl mb-4">
+          <h2 className="text-2xl mb-4 font-bold">
             Histórico de Hunts
           </h2>
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left border-b border-slate-700">
+                <tr className="text-left border-b border-slate-700 text-gray-400">
                   <th className="pb-2">Data</th>
+                  <th className="pb-2">XP</th>
                   <th className="pb-2">Loot</th>
                   <th className="pb-2">Supplies</th>
                   <th className="pb-2">Balance</th>
@@ -273,24 +294,28 @@ export default function Home() {
                 {history.map((hunt) => (
                   <tr
                     key={hunt.id}
-                    className="border-b border-slate-800"
+                    className="border-b border-slate-800 hover:bg-[#0B1020]/50"
                   >
                     <td className="py-2">{hunt.date}</td>
 
-                    <td>
-                      {hunt.loot.toLocaleString("pt-BR")}
+                    <td className="text-emerald-400 font-medium">
+                      {(hunt.xp || 0).toLocaleString("pt-BR")}
                     </td>
 
                     <td>
-                      {hunt.supplies.toLocaleString("pt-BR")}
+                      {hunt.loot.toLocaleString("pt-BR")} GP
                     </td>
 
                     <td>
-                      {hunt.balance.toLocaleString("pt-BR")}
+                      {hunt.supplies.toLocaleString("pt-BR")} GP
                     </td>
 
                     <td>
-                      {hunt.tc.toFixed(1)}
+                      {hunt.balance.toLocaleString("pt-BR")} GP
+                    </td>
+
+                    <td>
+                      {hunt.tc.toFixed(1)} TC
                     </td>
                   </tr>
                 ))}
