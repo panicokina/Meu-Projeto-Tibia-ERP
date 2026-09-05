@@ -173,7 +173,8 @@ export default function Home() {
     const hasLoot = /Loot:\s*/i.test(analyzer);
     const hasSupplies = /Supplies:\s*/i.test(analyzer);
     const hasBalance = /Balance:\s*/i.test(analyzer);
-    const hasXp = /XP Gain:\s*/i.test(analyzer);
+    // Garante busca do "XP Gain:" que NÃO seja précédido por "Raw "
+    const hasXp = /(?:^|\n)\s*(?<!Raw\s*)XP Gain:\s*/i.test(analyzer);
 
     if (!hasLoot || !hasSupplies || !hasBalance || !hasXp) {
       setErrorMessage(
@@ -185,7 +186,9 @@ export default function Home() {
     const lootValue = parseTibiaValue(/Loot:\s*([^\r\n]+)/i);
     const suppliesValue = parseTibiaValue(/Supplies:\s*([^\r\n]+)/i);
     const balanceValue = parseTibiaValue(/Balance:\s*([^\r\n]+)/i);
-    const xpValue = parseTibiaValue(/XP Gain:\s*([^\r\n]+)/i);
+    
+    // Expressão regular que ignora "Raw XP Gain" e pega estritamente "XP Gain:"
+    const xpValue = parseTibiaValue(/(?:^|\n)\s*(?<!Raw\s*)XP Gain:\s*([^\r\n]+)/i);
 
     const tcEarned = balanceValue / tcPrice;
 
