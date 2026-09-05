@@ -85,8 +85,9 @@ export default function Home() {
     const suppliesMatch = analyzer.match(/Supplies:\s*([\d.]+)/);
     const balanceMatch = analyzer.match(/Balance:\s*([\d.]+)/);
     
-    // Tenta capturar Raw XP Gain primeiro; se não achar, busca XP Gain padrão
-    const xpMatch = analyzer.match(/Raw XP Gain:\s*([\d.]+)/) || analyzer.match(/XP Gain:\s*([\d.]+)/);
+    // Agora busca estritamente por "XP Gain:" (ignorando o Raw XP Gain)
+    // Usamos um regex que garante que não pegue a palavra "Raw" antes
+    const xpMatch = analyzer.match(/(?:^|\n)\s*XP Gain:\s*([\d.]+)/);
 
     const lootValue = lootMatch
       ? Number(lootMatch[1].replace(/\./g, ""))
