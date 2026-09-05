@@ -27,9 +27,9 @@ interface CharData {
 }
 
 // -------------------------------------------------------------
-// FÓRMULAS MATEMÁTICAS OFICIAIS DO TIBIA
+// FÓRMULA MATEMÁTICA OFICIAL DO TIBIA
 // -------------------------------------------------------------
-// XP total para ir de Level L até L+1 (ex: no 677 são 22.815.100 XP)
+// XP total necessária para ir do level L para L+1
 function getXpToNextLevel(level: number): number {
   return 50 * Math.pow(level, 2) - 150 * level + 100;
 }
@@ -63,6 +63,9 @@ export default function Home() {
   const [hunts, setHunts] = useState(0);
   const [totalXp, setTotalXp] = useState(0);
 
+  // Armazena o XP ganho em hunts especificamente para o level atual
+  const [sessionLevelXp, setSessionLevelXp] = useState(0);
+
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -75,21 +78,28 @@ export default function Home() {
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
   // -------------------------------------------------------------
-  // PROGRESSO DO PERSONAGEM (TOTALMENTE INDEPENDENTE DAS HUNTS)
+  // PROGRESSO DINÂMICO DO LEVEL
   // -------------------------------------------------------------
   const currentLevel = charData.level || 677;
 
-  // XP necessária para passar do level atual para o próximo (Tabela Oficial do Tibia)
+  // XP necessária para passar deste level para o próximo
   const xpRequiredForThisLevel = getXpToNextLevel(currentLevel);
 
-  // Porcentagem fixa/atual do seu personagem no level (ex: 8.7% no 677)
-  const currentLevelPercent = 8.7;
+  // % base do char no level (8.7% no lvl 677)
+  const initialPercent = currentLevel === 677 ? 8.7 : 0;
+  const initialXpInLevel = (initialPercent / 100) * xpRequiredForThisLevel;
 
-  // XP que você já conquistou dentro deste level (8.7% de 22.815.100 = 1.984.913)
-  const currentXpInLevel = (currentLevelPercent / 100) * xpRequiredForThisLevel;
+  // XP total acumulada no level atual (XP base + XP das novas hunts importadas)
+  const accumulatedLevelXp = initialXpInLevel + sessionLevelXp;
 
-  // Quanto XP falta para o próximo level (20.830.187 XP)
-  const xpRemaining = xpRequiredForThisLevel - currentXpInLevel;
+  // Porcentagem calculada em tempo real (limitada a 100%)
+  const calculatedProgress = Math.min(
+    (accumulatedLevelXp / xpRequiredForThisLevel) * 100,
+    100
+  );
+
+  // Quanto XP ainda falta para o próximo level
+  const xpRemaining = Math.max(xpRequiredForThisLevel - accumulatedLevelXp, 0);
 
   const fetchCharData = async () => {
     try {
@@ -100,13 +110,19 @@ export default function Home() {
       const character = json.character?.character;
 
       if (character) {
-        setCharData((prev) => ({
-          ...prev,
-          name: character.name,
-          level: character.level || 677,
-          vocation: character.vocation,
-          world: character.world,
-        }));
+        setCharData((prev) => {
+          // Se o level subiu na API, reseta o acúmulo de XP da sessão do level
+          if (character.level && character.level > prev.level) {
+            setSessionLevelXp(0);
+          }
+          return {
+            ...prev,
+            name: character.name,
+            level: character.level || 677,
+            vocation: character.vocation,
+            world: character.world,
+          };
+        });
       }
     } catch (err) {
       console.error("Erro ao buscar dados do Tibia:", err);
@@ -256,6 +272,10 @@ export default function Home() {
     setTotalXp(updatedXp);
     setHunts(updatedHunts);
     setHistory(updatedHistory);
+    
+    // Incrementa a XP da sessão para fazer a barra progredir em tempo real
+    setSessionLevelXp((prev) => prev + xpValue);
+
     setAnalyzer("");
 
     saveDataToSupabase(
@@ -280,6 +300,7 @@ export default function Home() {
       setBalance(0);
       setHunts(0);
       setTotalXp(0);
+      setSessionLevelXp(0);
       setHistory([]);
       setShowAuthModal(false);
       setAuthUsername("");
@@ -333,7 +354,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* BARRA DE PROGRESSO FIXA E INDEPENDENTE DO SUPABASE */}
+              {/* BARRA DE PROGRESSO DINÂMICA */}
               <div className="mt-2 min-h-[60px]">
                 {!isLoaded ? (
                   <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
@@ -342,13 +363,13 @@ export default function Home() {
                     <div className="flex justify-between text-sm font-semibold mb-1">
                       <span>Level {currentLevel}</span>
                       <span className="text-yellow-400">
-                        {currentLevelPercent.toFixed(1)}% pro próx. lvl
+                        {calculatedProgress.toFixed(1)}% pro próx. lvl
                       </span>
                     </div>
                     <div className="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden">
                       <div 
                         className="bg-emerald-400 h-2.5 transition-all duration-500" 
-                        style={{ width: `${currentLevelPercent}%` }}
+                        style={{ width: `${calculatedProgress}%` }}
                       />
                     </div>
                     <p className="text-xs text-gray-400 mt-1.5 text-right">
