@@ -24,9 +24,13 @@ interface CharData {
 
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina"; 
-  
-  // Aponta diretamente para a foto salva na pasta /public
   const OUTFIT_IMAGE_URL = "/greey-kina.png";
+
+  // ÍCONES OFICIAIS DO TIBIA
+  const CRYSTAL_COIN_ICON = "https://static.tibia.com/images/library/crystalcoin.gif";
+  const TIBIA_COIN_ICON = "https://static.tibia.com/images/store/tibiacoins.gif";
+  // Sanguine Bludgeon ID: 39147
+  const SANGUINE_BLUDGEON_ICON = "https://static.tibia.com/images/charactertrade/items/39147.gif";
 
   const [charData, setCharData] = useState<CharData>({
     name: CHARACTER_NAME,
@@ -58,7 +62,6 @@ export default function Home() {
   const [authUsername, setAuthUsername] = useState("");
   const [authPassword, setAuthPassword] = useState("");
 
-  // Busca os dados em tempo real na API do TibiaData
   const fetchCharData = async () => {
     setCharData((prev) => ({ ...prev, loading: true, error: false }));
     try {
@@ -91,7 +94,7 @@ export default function Home() {
     fetchCharData();
   }, []);
 
-  // 1. Carrega os dados do localStorage
+  // 1. Carrega dados do localStorage
   useEffect(() => {
     const saved = localStorage.getItem("tibiaERP");
     if (saved) {
@@ -215,10 +218,10 @@ export default function Home() {
           DashBoard Panicão
         </h1>
 
-        {/* TOP CARDS GRID: Personagem + Métricas */}
+        {/* TOP CARDS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL DO PERSONAGEM (GREEY KINA) */}
+          {/* CARD DE PERFIL DO PERSONAGEM */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -235,7 +238,7 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* FOTO / OUTFIT DO CHAR */}
+              {/* FOTO DO CHAR */}
               <div className="my-3 flex justify-center items-center bg-[#0B1020] p-2 rounded-lg min-h-[140px] border border-slate-800">
                 <img 
                   src={OUTFIT_IMAGE_URL} 
@@ -244,7 +247,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL E BARRA DE PROGRESSO DE XP */}
+              {/* LEVEL E PROGRESSO DE XP */}
               <div className="mt-2">
                 <div className="flex justify-between text-sm font-semibold mb-1">
                   <span>Level {charData.loading ? "..." : charData.level}</span>
@@ -262,34 +265,56 @@ export default function Home() {
 
           {/* ESTATÍSTICAS DO DASHBOARD */}
           <div className="xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            
+            {/* SALDO CONSOLIDADO */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Saldo Consolidado</h2>
-              <p className="text-xl font-bold text-green-400">{balance.toLocaleString("pt-BR")} GP</p>
+              <div className="flex items-center gap-2">
+                <img src={CRYSTAL_COIN_ICON} alt="Crystal Coin" className="w-6 h-6 object-contain" />
+                <p className="text-xl font-bold text-green-400">{balance.toLocaleString("pt-BR")} GP</p>
+              </div>
             </div>
 
+            {/* TIBIA COINS */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Tibia Coins</h2>
-              <p className="text-xl font-bold text-yellow-400">{tibiaCoins.toFixed(1)} TC</p>
+              <div className="flex items-center gap-2">
+                <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-6 h-6 object-contain" />
+                <p className="text-xl font-bold text-yellow-400">{tibiaCoins.toFixed(1)} TC</p>
+              </div>
             </div>
 
+            {/* XP ACUMULADA */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">XP Acumulada</h2>
               <p className="text-xl font-bold text-emerald-400">{totalXp.toLocaleString("pt-BR")}</p>
             </div>
 
+            {/* LOOT TOTAL */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Loot Total</h2>
-              <p className="text-xl font-bold">{loot.toLocaleString("pt-BR")} GP</p>
+              <div className="flex items-center gap-2">
+                <img src={CRYSTAL_COIN_ICON} alt="Crystal Coin" className="w-6 h-6 object-contain" />
+                <p className="text-xl font-bold">{loot.toLocaleString("pt-BR")} GP</p>
+              </div>
             </div>
 
+            {/* SUPPLIES */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Supplies</h2>
-              <p className="text-xl font-bold">{supplies.toLocaleString("pt-BR")} GP</p>
+              <div className="flex items-center gap-2">
+                <img src={CRYSTAL_COIN_ICON} alt="Crystal Coin" className="w-6 h-6 object-contain" />
+                <p className="text-xl font-bold">{supplies.toLocaleString("pt-BR")} GP</p>
+              </div>
             </div>
 
+            {/* HUNTS REALIZADAS (COM SANGUINE BLUDGEON) */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Hunts Realizadas</h2>
-              <p className="text-xl font-bold">{hunts}</p>
+              <div className="flex items-center gap-2">
+                <img src={SANGUINE_BLUDGEON_ICON} alt="Sanguine Bludgeon" className="w-7 h-7 object-contain" />
+                <p className="text-xl font-bold">{hunts}</p>
+              </div>
             </div>
           </div>
 
@@ -297,7 +322,10 @@ export default function Home() {
 
         {/* META TIBIA COINS */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
-          <h2 className="mb-2 font-semibold">Meta 5000 Tibia Coins</h2>
+          <div className="flex items-center gap-2 mb-2">
+            <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-5 h-5 object-contain" />
+            <h2 className="font-semibold">Meta 5000 Tibia Coins</h2>
+          </div>
           <p className="mb-3 text-gray-300">{tibiaCoins.toFixed(1)} / 5000 TC</p>
           <div className="w-full bg-gray-700 h-4 rounded">
             <div
@@ -310,7 +338,10 @@ export default function Home() {
 
         {/* VALOR TC */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
-          <h2 className="mb-4 font-semibold">Valor Atual da Tibia Coin</h2>
+          <div className="flex items-center gap-2 mb-4">
+            <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-5 h-5 object-contain" />
+            <h2 className="font-semibold">Valor Atual da Tibia Coin</h2>
+          </div>
           <input
             type="number"
             value={tcPrice}
@@ -338,7 +369,7 @@ export default function Home() {
           <div className="flex gap-3 mt-4">
             <button
               onClick={importHunt}
-              className="bg-yellow-500 text-black px-6 py-2 rounded font-bold hover:bg-yellow-400 transition"
+              className="bg-yellow-500 text-black px-6 py-2 rounded font-bold hover:bg-yellow-400 transition flex items-center gap-2"
             >
               Importar Hunt
             </button>
@@ -386,10 +417,30 @@ export default function Home() {
                         <td className="text-emerald-400 font-medium">
                           {(hunt.xp || 0).toLocaleString("pt-BR")}
                         </td>
-                        <td>{hunt.loot.toLocaleString("pt-BR")} GP</td>
-                        <td>{hunt.supplies.toLocaleString("pt-BR")} GP</td>
-                        <td>{hunt.balance.toLocaleString("pt-BR")} GP</td>
-                        <td>{hunt.tc.toFixed(1)} TC</td>
+                        <td>
+                          <div className="flex items-center gap-1.5">
+                            <img src={CRYSTAL_COIN_ICON} alt="CC" className="w-4 h-4 object-contain" />
+                            {hunt.loot.toLocaleString("pt-BR")} GP
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-1.5">
+                            <img src={CRYSTAL_COIN_ICON} alt="CC" className="w-4 h-4 object-contain" />
+                            {hunt.supplies.toLocaleString("pt-BR")} GP
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-1.5">
+                            <img src={CRYSTAL_COIN_ICON} alt="CC" className="w-4 h-4 object-contain" />
+                            {hunt.balance.toLocaleString("pt-BR")} GP
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-1.5">
+                            <img src={TIBIA_COIN_ICON} alt="TC" className="w-4 h-4 object-contain" />
+                            {hunt.tc.toFixed(1)} TC
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -400,7 +451,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* MODAL DE LOGIN PARA APAGAR OS DADOS */}
+      {/* MODAL DE LOGIN */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#151B31] p-6 rounded-xl w-full max-w-sm border border-gray-700 shadow-2xl">
