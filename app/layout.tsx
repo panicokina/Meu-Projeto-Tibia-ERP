@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   title: "Dashboard Panicão - Greey Kina",
   description: "Panicão Tibia",
   icons: {
-    icon: "https://tibia.fandom.com/wiki/Special:Redirect/file/Crystal_Coin.gif",
-    shortcut: "https://tibia.fandom.com/wiki/Special:Redirect/file/Crystal_Coin.gif",
-    apple: "https://tibia.fandom.com/wiki/Special:Redirect/file/Crystal_Coin.gif",
+    icon: "https://static.tibia.com/images/global/general/favicon.ico",
+    shortcut: "https://static.tibia.com/images/global/general/favicon.ico",
+    apple: "https://static.tibia.com/images/global/general/favicon.ico",
   },
 };
 
