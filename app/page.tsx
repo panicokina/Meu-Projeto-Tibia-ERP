@@ -29,13 +29,7 @@ interface CharData {
 // -------------------------------------------------------------
 // FÓRMULAS MATEMÁTICAS OFICIAIS DO TIBIA
 // -------------------------------------------------------------
-// Retorna a XP acumulada total necessária para atingir determinado Level L
-function getXpForLevel(level: number): number {
-  if (level <= 1) return 0;
-  return Math.floor((50 / 3) * (Math.pow(level, 3) - 6 * Math.pow(level, 2) + 17 * level - 12));
-}
-
-// Retorna a quantidade exata de XP necessária para ir do Level L para L+1
+// XP total para ir de Level L até L+1 (ex: no 677 são 22.815.100 XP)
 function getXpToNextLevel(level: number): number {
   return 50 * Math.pow(level, 2) - 150 * level + 100;
 }
@@ -81,26 +75,21 @@ export default function Home() {
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
   // -------------------------------------------------------------
-  // CÁLCULO DINÂMICO DE PROGRESSO COM A FÓRMULA OFICIAL
+  // PROGRESSO DO PERSONAGEM (TOTALMENTE INDEPENDENTE DAS HUNTS)
   // -------------------------------------------------------------
   const currentLevel = charData.level || 677;
 
-  // XP necessária para avançar do level atual pro próximo (ex: 677 -> 678 é 22.815.100)
+  // XP necessária para passar do level atual para o próximo (Tabela Oficial do Tibia)
   const xpRequiredForThisLevel = getXpToNextLevel(currentLevel);
 
-  // Exemplo no Lvl 677 com 8.7% já conquistado no momento da captura
-  // Se o level for o base 677, consideramos a XP base inicial de 1.993.138 GP + XP das hunts importadas
-  const initialBaseXp = currentLevel === 677 ? 1993138 : 0;
-  const currentXpInLevel = initialBaseXp + totalXp;
+  // Porcentagem fixa/atual do seu personagem no level (ex: 8.7% no 677)
+  const currentLevelPercent = 8.7;
 
-  // Cálculo do XP restante para o próximo level
-  const xpRemaining = Math.max(xpRequiredForThisLevel - currentXpInLevel, 0);
+  // XP que você já conquistou dentro deste level (8.7% de 22.815.100 = 1.984.913)
+  const currentXpInLevel = (currentLevelPercent / 100) * xpRequiredForThisLevel;
 
-  // Porcentagem calculada dinamicamente
-  const calculatedProgress = Math.min(
-    Math.max((currentXpInLevel / xpRequiredForThisLevel) * 100, 0),
-    100
-  );
+  // Quanto XP falta para o próximo level (20.830.187 XP)
+  const xpRemaining = xpRequiredForThisLevel - currentXpInLevel;
 
   const fetchCharData = async () => {
     try {
@@ -136,7 +125,7 @@ export default function Home() {
       }
 
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("tibia_dashboard")
           .select("*")
           .eq("id", "main")
@@ -344,7 +333,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* BARRA DE PROGRESSO DINÂMICA */}
+              {/* BARRA DE PROGRESSO FIXA E INDEPENDENTE DO SUPABASE */}
               <div className="mt-2 min-h-[60px]">
                 {!isLoaded ? (
                   <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
@@ -353,17 +342,17 @@ export default function Home() {
                     <div className="flex justify-between text-sm font-semibold mb-1">
                       <span>Level {currentLevel}</span>
                       <span className="text-yellow-400">
-                        {calculatedProgress.toFixed(1)}% pro próx. lvl
+                        {currentLevelPercent.toFixed(1)}% pro próx. lvl
                       </span>
                     </div>
                     <div className="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden">
                       <div 
                         className="bg-emerald-400 h-2.5 transition-all duration-500" 
-                        style={{ width: `${calculatedProgress}%` }}
+                        style={{ width: `${currentLevelPercent}%` }}
                       />
                     </div>
                     <p className="text-xs text-gray-400 mt-1.5 text-right">
-                      Falta: <span className="text-gray-200 font-mono">{xpRemaining.toLocaleString("pt-BR")} XP</span>
+                      Falta: <span className="text-gray-200 font-mono">{Math.round(xpRemaining).toLocaleString("pt-BR")} XP</span>
                     </p>
                   </>
                 )}
@@ -371,7 +360,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* MÉTRICAS */}
+          {/* MÉTRICAS DAS HUNTS */}
           <div className="xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
