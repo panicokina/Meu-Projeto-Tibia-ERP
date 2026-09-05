@@ -26,11 +26,13 @@ export default function Home() {
   const CHARACTER_NAME = "Greey Kina"; 
   const OUTFIT_IMAGE_URL = "/greey-kina.png";
 
-  // ÍCONES OFICIAIS DO TIBIA
-  const CRYSTAL_COIN_ICON = "https://static.tibia.com/images/library/crystalcoin.gif";
-  const TIBIA_COIN_ICON = "https://static.tibia.com/images/store/tibiacoins.gif";
-  // Sanguine Bludgeon ID: 39147
-  const SANGUINE_BLUDGEON_ICON = "https://static.tibia.com/images/charactertrade/items/39147.gif";
+  // ÍCONES LOCAIS (Pasta public)
+  const CRYSTAL_COIN_ICON = "/Crystal_Coin.gif";
+  const TIBIA_COIN_ICON = "/Tibia_Coins.gif";
+  const SANGUINE_BLUDGEON_ICON = "/Sanguine_Bludgeon.gif";
+  const BOOTS_OF_HASTE_ICON = "/Boots_of_Haste.gif";
+  const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
+  const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
   const [charData, setCharData] = useState<CharData>({
     name: CHARACTER_NAME,
@@ -287,14 +289,17 @@ export default function Home() {
             {/* XP ACUMULADA */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">XP Acumulada</h2>
-              <p className="text-xl font-bold text-emerald-400">{totalXp.toLocaleString("pt-BR")}</p>
+              <div className="flex items-center gap-2">
+                <img src={REALITY_REAVER_ICON} alt="Reality Reaver" className="w-6 h-6 object-contain" />
+                <p className="text-xl font-bold text-emerald-400">{totalXp.toLocaleString("pt-BR")}</p>
+              </div>
             </div>
 
             {/* LOOT TOTAL */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Loot Total</h2>
               <div className="flex items-center gap-2">
-                <img src={CRYSTAL_COIN_ICON} alt="Crystal Coin" className="w-6 h-6 object-contain" />
+                <img src={BOOTS_OF_HASTE_ICON} alt="Boots of Haste" className="w-6 h-6 object-contain" />
                 <p className="text-xl font-bold">{loot.toLocaleString("pt-BR")} GP</p>
               </div>
             </div>
@@ -303,12 +308,12 @@ export default function Home() {
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Supplies</h2>
               <div className="flex items-center gap-2">
-                <img src={CRYSTAL_COIN_ICON} alt="Crystal Coin" className="w-6 h-6 object-contain" />
+                <img src={GREAT_MANA_POTION_ICON} alt="Great Mana Potion" className="w-6 h-6 object-contain" />
                 <p className="text-xl font-bold">{supplies.toLocaleString("pt-BR")} GP</p>
               </div>
             </div>
 
-            {/* HUNTS REALIZADAS (COM SANGUINE BLUDGEON) */}
+            {/* HUNTS REALIZADAS */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Hunts Realizadas</h2>
               <div className="flex items-center gap-2">
@@ -415,17 +420,20 @@ export default function Home() {
                       <tr key={hunt.id} className="border-b border-slate-800 hover:bg-[#0B1020]/50">
                         <td className="py-2">{hunt.date}</td>
                         <td className="text-emerald-400 font-medium">
-                          {(hunt.xp || 0).toLocaleString("pt-BR")}
+                          <div className="flex items-center gap-1.5">
+                            <img src={REALITY_REAVER_ICON} alt="XP" className="w-4 h-4 object-contain" />
+                            {(hunt.xp || 0).toLocaleString("pt-BR")}
+                          </div>
                         </td>
                         <td>
                           <div className="flex items-center gap-1.5">
-                            <img src={CRYSTAL_COIN_ICON} alt="CC" className="w-4 h-4 object-contain" />
+                            <img src={BOOTS_OF_HASTE_ICON} alt="Loot" className="w-4 h-4 object-contain" />
                             {hunt.loot.toLocaleString("pt-BR")} GP
                           </div>
                         </td>
                         <td>
                           <div className="flex items-center gap-1.5">
-                            <img src={CRYSTAL_COIN_ICON} alt="CC" className="w-4 h-4 object-contain" />
+                            <img src={GREAT_MANA_POTION_ICON} alt="Supplies" className="w-4 h-4 object-contain" />
                             {hunt.supplies.toLocaleString("pt-BR")} GP
                           </div>
                         </td>
