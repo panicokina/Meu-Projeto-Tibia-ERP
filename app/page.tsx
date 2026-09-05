@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// Inicializa o cliente do Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -23,36 +22,26 @@ interface CharData {
   level: number;
   vocation: string;
   world: string;
-  progress: number;
   loading: boolean;
   error: boolean;
 }
 
-// XP BASE INICIAL FIXA DO GREEY KINA (Level 677)
-const INITIAL_BASE_EXP = 5127830738;
-
-// FÓRMULAS OFICIAIS DE XP DO TIBIA
+// FÓRMULA PRECISA DE XP TOTAL POR LEVEL DO TIBIA
 function getXpForLevel(level: number): number {
-  return (50 / 3) * (Math.pow(level, 3) - 6 * Math.pow(level, 2) + 17 * level - 12);
+  if (level <= 1) return 0;
+  const n = BigInt(level);
+  const xp = (BigInt(50) * (n * n * n - BigInt(6) * n * n + BigInt(17) * n - BigInt(12))) / BigInt(3);
+  return Number(xp);
 }
 
-function getLevelProgress(level: number, currentExp: number) {
-  if (level <= 0 || currentExp <= 0) return 0;
-  
-  const currentLvlXp = getXpForLevel(level);
-  const nextLvlXp = getXpForLevel(level + 1);
-  const xpRequiredForLvl = nextLvlXp - currentLvlXp;
-  const xpGainedInLvl = currentExp - currentLvlXp;
-
-  const percent = (xpGainedInLvl / xpRequiredForLvl) * 100;
-  return Math.min(Math.max(percent, 0), 100);
-}
+// DADOS BASE DO CHAR
+const INITIAL_CHAR_EXP = 5127830738; // 5.127.830.738 XP inicial exato
+const INITIAL_CHAR_LEVEL = 677;
 
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina"; 
   const OUTFIT_IMAGE_URL = "/greey-kina.png";
 
-  // ÍCONES LOCAIS (Pasta public)
   const CRYSTAL_COIN_ICON = "/Crystal_Coin.gif";
   const TIBIA_COIN_ICON = "/Tibia_Coins.gif";
   const SANGUINE_BLUDGEON_ICON = "/Sanguine_Bludgeon.gif";
@@ -62,11 +51,10 @@ export default function Home() {
 
   const [charData, setCharData] = useState<CharData>({
     name: CHARACTER_NAME,
-    level: 677,
-    vocation: "Carregando...",
-    world: "Carregando...",
-    progress: 0,
-    loading: true,
+    level: INITIAL_CHAR_LEVEL,
+    vocation: "Elite Knight",
+    world: "Inabra",
+    loading: false,
     error: false,
   });
 
@@ -84,22 +72,36 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Modal de autenticação
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authUsername, setAuthUsername] = useState("");
   const [authPassword, setAuthPassword] = useState("");
 
-  // Cálculo de Tibia Coins dinâmico
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // XP Atual Total do Char = XP Base Inicial (5.127.830.738) + XP Acumulada das Hunts
-  const currentTotalExp = INITIAL_BASE_EXP + totalXp;
+  // CÁLCULO DE PROGRESSO DE LEVEL PRECISO
+  const currentTotalExp = INITIAL_CHAR_EXP + totalXp;
+  
+  // Calcula dinamicamente o level correto de acordo com a XP total acumulada
+  let calculatedLevel = charData.level;
+  let startLvlXp = getXpForLevel(calculatedLevel);
+  let nextLvlXp = getXpForLevel(calculatedLevel + 1);
 
-  // Porcentagem calculada automaticamente em tempo real
-  const calculatedProgress = getLevelProgress(
-    charData.level || 677,
-    currentTotalExp
+  // Se a XP ultrapassar o próximo level, avança o level automaticamente
+  while (currentTotalExp >= nextLvlXp) {
+    calculatedLevel++;
+    startLvlXp = nextLvlXp;
+    nextLvlXp = getXpForLevel(calculatedLevel + 1);
+  }
+
+  const xpNeededForCurrentLvl = nextLvlXp - startLvlXp;
+  const xpGainedInCurrentLvl = currentTotalExp - startLvlXp;
+  
+  const calculatedProgress = Math.min(
+    Math.max((xpGainedInCurrentLvl / xpNeededForCurrentLvl) * 100, 0),
+    100
   );
+
+  const xpRemaining = nextLvlXp - currentTotalExp;
 
   const fetchCharData = async () => {
     setCharData((prev) => ({ ...prev, loading: true, error: false }));
@@ -111,14 +113,11 @@ export default function Home() {
       const character = json.character?.character;
 
       if (character) {
-        const lvl = character.level || 677;
-
         setCharData({
           name: character.name,
-          level: lvl,
+          level: character.level || INITIAL_CHAR_LEVEL,
           vocation: character.vocation,
           world: character.world,
-          progress: getLevelProgress(lvl, currentTotalExp),
           loading: false,
           error: false,
         });
@@ -135,11 +134,9 @@ export default function Home() {
     fetchCharData();
   }, []);
 
-  // 1. Carrega dados do Supabase
   useEffect(() => {
     async function loadDataFromSupabase() {
       if (!supabaseUrl || !supabaseAnonKey) {
-        console.warn("Chaves do Supabase não configuradas no .env.local");
         setIsLoaded(true);
         return;
       }
@@ -150,10 +147,6 @@ export default function Home() {
           .select("*")
           .eq("id", "main")
           .single();
-
-        if (error && error.code !== "PGRST116") {
-          console.error("Erro ao carregar do Supabase:", error);
-        }
 
         if (data) {
           setLoot(Number(data.loot) || 0);
@@ -174,7 +167,6 @@ export default function Home() {
     loadDataFromSupabase();
   }, []);
 
-  // 2. Salva no Supabase sempre que houver alteração
   const saveDataToSupabase = async (
     newLoot: number,
     newSupplies: number,
@@ -311,9 +303,9 @@ export default function Home() {
       setAuthPassword("");
 
       await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, []);
-      alert("Dados apagados com sucesso do banco de dados!");
+      alert("Dados apagados com sucesso!");
     } else {
-      alert("Usuário ou senha incorretos! Tentativa de trollagem bloqueada. 🛡️");
+      alert("Usuário ou senha incorretos!");
     }
   }
 
@@ -331,10 +323,9 @@ export default function Home() {
           DashBoard Panicão
         </h1>
 
-        {/* TOP CARDS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL DO PERSONAGEM */}
+          {/* CARD DE PERFIL */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -351,7 +342,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* FOTO DO CHAR */}
               <div className="my-3 flex justify-center items-center bg-[#0B1020] p-2 rounded-lg min-h-[140px] border border-slate-800">
                 <img 
                   src={OUTFIT_IMAGE_URL} 
@@ -360,10 +350,10 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL E PROGRESSO DE XP CALCULADO AUTOMÁTICO */}
+              {/* LEVEL E PROGRESSO CORRIGIDOS */}
               <div className="mt-2">
                 <div className="flex justify-between text-sm font-semibold mb-1">
-                  <span>Level {charData.loading ? "..." : charData.level}</span>
+                  <span>Level {calculatedLevel}</span>
                   <span className="text-yellow-400">
                     {calculatedProgress.toFixed(2)}% pro próx. lvl
                   </span>
@@ -374,14 +364,16 @@ export default function Home() {
                     style={{ width: `${calculatedProgress}%` }}
                   />
                 </div>
+                <p className="text-xs text-gray-400 mt-1.5 text-right">
+                  Falta: <span className="text-gray-200 font-mono">{xpRemaining.toLocaleString("pt-BR")} XP</span>
+                </p>
               </div>
             </div>
           </div>
 
-          {/* ESTATÍSTICAS DO DASHBOARD */}
+          {/* CARDS DE METRICAS */}
           <div className="xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             
-            {/* SALDO CONSOLIDADO */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Saldo Consolidado</h2>
               <div className="flex items-center gap-2">
@@ -392,7 +384,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* TIBIA COINS */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Tibia Coins</h2>
               <div className="flex items-center gap-2">
@@ -401,7 +392,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* XP ACUMULADA NAS HUNTS */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">XP Acumulada (Hunts)</h2>
               <div className="flex items-center gap-2">
@@ -414,7 +404,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* LOOT TOTAL */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Loot Total</h2>
               <div className="flex items-center gap-2">
@@ -423,7 +412,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* SUPPLIES */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Supplies</h2>
               <div className="flex items-center gap-2">
@@ -432,7 +420,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* HUNTS REALIZADAS */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Hunts Realizadas</h2>
               <div className="flex items-center gap-2">
@@ -506,7 +493,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* HISTÓRICO EXPANDÍVEL */}
+        {/* HISTÓRICO */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">Histórico de Hunts ({history.length})</h2>
@@ -583,20 +570,19 @@ export default function Home() {
         </div>
       </main>
 
-      {/* MODAL DE LOGIN */}
+      {/* MODAL AUTH */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#151B31] p-6 rounded-xl w-full max-w-sm border border-gray-700 shadow-2xl">
             <h2 className="text-xl font-bold mb-2 text-red-500">Área Restrita</h2>
-            <p className="mb-6 text-sm text-gray-400">Insira as credenciais de dono para apagar o banco de dados.</p>
+            <p className="mb-6 text-sm text-gray-400">Insira as credenciais para apagar os dados.</p>
             <div className="mb-4">
               <label className="block text-sm mb-1 text-gray-300">Usuário</label>
               <input 
                 type="text" 
                 value={authUsername}
                 onChange={(e) => setAuthUsername(e.target.value)}
-                className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-red-500 text-white"
-                placeholder="Digite o usuário..."
+                className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none text-white"
               />
             </div>
             <div className="mb-6">
@@ -605,26 +591,21 @@ export default function Home() {
                 type="password" 
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
-                className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-red-500 text-white"
-                placeholder="Digite a senha..."
+                className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none text-white"
               />
             </div>
             <div className="flex gap-3 justify-end">
               <button 
-                onClick={() => {
-                  setShowAuthModal(false);
-                  setAuthUsername("");
-                  setAuthPassword("");
-                }}
-                className="px-4 py-2 rounded font-bold text-gray-400 hover:text-white transition"
+                onClick={() => setShowAuthModal(false)}
+                className="px-4 py-2 rounded text-gray-400 hover:text-white"
               >
                 Cancelar
               </button>
               <button 
                 onClick={confirmClearData}
-                className="bg-red-600 px-6 py-2 rounded font-bold hover:bg-red-500 transition text-white"
+                className="bg-red-600 px-6 py-2 rounded font-bold text-white"
               >
-                Apagar Tudo
+                Apagar
               </button>
             </div>
           </div>
