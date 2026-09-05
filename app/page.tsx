@@ -28,6 +28,11 @@ export default function Home() {
   // Flag para controle de carregamento do localStorage
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Estados para o Modal de Autenticação (Proteção contra amigos trolls)
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+
   // 1. Carrega os dados salvos do localStorage ao iniciar
   useEffect(() => {
     const saved = localStorage.getItem("tibiaERP");
@@ -48,12 +53,12 @@ export default function Home() {
         console.error("Erro ao carregar dados do localStorage:", error);
       }
     }
-    setIsLoaded(true); // Libera o app para salvar alterações apenas após carregar
+    setIsLoaded(true);
   }, []);
 
   // 2. Salva no localStorage somente APÓS os dados iniciais serem carregados
   useEffect(() => {
-    if (!isLoaded) return; // Evita sobrescrever os dados com os valores padrão zerados
+    if (!isLoaded) return; 
 
     localStorage.setItem(
       "tibiaERP",
@@ -85,8 +90,7 @@ export default function Home() {
     const suppliesMatch = analyzer.match(/Supplies:\s*([\d.]+)/);
     const balanceMatch = analyzer.match(/Balance:\s*([\d.]+)/);
     
-    // Agora busca estritamente por "XP Gain:" (ignorando o Raw XP Gain)
-    // Usamos um regex que garante que não pegue a palavra "Raw" antes
+    // Busca estritamente por "XP Gain:" (ignorando o Raw XP Gain)
     const xpMatch = analyzer.match(/(?:^|\n)\s*XP Gain:\s*([\d.]+)/);
 
     const lootValue = lootMatch
@@ -129,22 +133,32 @@ export default function Home() {
     setAnalyzer("");
   }
 
-  function clearData() {
-    const confirmed = window.confirm(
-      "Tem certeza que deseja apagar todos os dados?"
-    );
+  // Função que abre o modal
+  function handleClearDataClick() {
+    setShowAuthModal(true);
+  }
 
-    if (!confirmed) return;
-
-    localStorage.removeItem("tibiaERP");
-
-    setLoot(0);
-    setSupplies(0);
-    setBalance(0);
-    setHunts(0);
-    setTibiaCoins(0);
-    setTotalXp(0);
-    setHistory([]);
+  // Função que verifica a senha e apaga de verdade
+  function confirmClearData() {
+    if (authUsername === "panicao" && authPassword === "panicao") {
+      localStorage.removeItem("tibiaERP");
+      setLoot(0);
+      setSupplies(0);
+      setBalance(0);
+      setHunts(0);
+      setTibiaCoins(0);
+      setTotalXp(0);
+      setHistory([]);
+      
+      // Fecha modal e limpa os campos de senha
+      setShowAuthModal(false);
+      setAuthUsername("");
+      setAuthPassword("");
+      
+      alert("Dados apagados com sucesso!");
+    } else {
+      alert("Usuário ou senha incorretos! Tentativa de trollagem bloqueada. 🛡️");
+    }
   }
 
   const progress = Math.min(
@@ -154,12 +168,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#0B1020] text-white">
-      <main className="max-w-[1400px] mx-auto p-8">
+      <main className="max-w-[1400px] mx-auto p-8 relative">
         <h1 className="text-4xl font-bold mb-8 text-yellow-400">
           DashBoard Panicão
         </h1>
 
-        {/* Grid ajustado para ter melhor espaçamento */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <div className="bg-[#151B31] p-5 rounded-xl">
             <h2 className="text-gray-400 text-sm mb-1 whitespace-nowrap">Saldo Consolidado</h2>
@@ -265,7 +278,7 @@ export default function Home() {
             </button>
 
             <button
-              onClick={clearData}
+              onClick={handleClearDataClick}
               className="bg-red-600 px-6 py-2 rounded font-bold hover:bg-red-500 transition"
             >
               Limpar Dados
@@ -325,6 +338,57 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* MODAL DE LOGIN PARA APAGAR OS DADOS */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#151B31] p-6 rounded-xl w-full max-w-sm border border-gray-700 shadow-2xl">
+            <h2 className="text-xl font-bold mb-2 text-red-500">Área Restrita</h2>
+            <p className="mb-6 text-sm text-gray-400">Insira as credenciais de dono para apagar o banco de dados.</p>
+            
+            <div className="mb-4">
+              <label className="block text-sm mb-1 text-gray-300">Usuário</label>
+              <input 
+                type="text" 
+                value={authUsername}
+                onChange={(e) => setAuthUsername(e.target.value)}
+                className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-red-500 text-white"
+                placeholder="Digite o usuário..."
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm mb-1 text-gray-300">Senha</label>
+              <input 
+                type="password" 
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-red-500 text-white"
+                placeholder="Digite a senha..."
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setAuthUsername("");
+                  setAuthPassword("");
+                }}
+                className="px-4 py-2 rounded font-bold text-gray-400 hover:text-white transition"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmClearData}
+                className="bg-red-600 px-6 py-2 rounded font-bold hover:bg-red-500 transition text-white"
+              >
+                Apagar Tudo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
