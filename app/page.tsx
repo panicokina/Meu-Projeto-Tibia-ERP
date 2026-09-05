@@ -70,23 +70,17 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // CÁLCULO EXATO IGUAL AO GUILDSTATS
+  // CÁLCULO DE PROGRESSO
   const currentLevel = charData.level || 677;
-
-  // XP total obtida no level atual (base + hunts importadas)
   const currentXpInLevel = INITIAL_LEVEL_XP_GAINED + totalXp;
-
-  // Quanto falta para o level 678
   const xpRemaining = Math.max(CURRENT_LEVEL_XP_TOTAL - currentXpInLevel, 0);
 
-  // Porcentagem exata (8.73% sem hunts)
   const calculatedProgress = Math.min(
     Math.max((currentXpInLevel / CURRENT_LEVEL_XP_TOTAL) * 100, 0),
     100
   );
 
   const fetchCharData = async () => {
-    setCharData((prev) => ({ ...prev, loading: true, error: false }));
     try {
       const res = await fetch(
         `https://api.tibiadata.com/v4/character/${encodeURIComponent(CHARACTER_NAME)}`
@@ -95,20 +89,16 @@ export default function Home() {
       const character = json.character?.character;
 
       if (character) {
-        setCharData({
+        setCharData((prev) => ({
+          ...prev,
           name: character.name,
           level: character.level || 677,
           vocation: character.vocation,
           world: character.world,
-          loading: false,
-          error: false,
-        });
-      } else {
-        setCharData((prev) => ({ ...prev, loading: false, error: true }));
+        }));
       }
     } catch (err) {
       console.error("Erro ao buscar dados do Tibia:", err);
-      setCharData((prev) => ({ ...prev, loading: false, error: true }));
     }
   };
 
@@ -332,23 +322,29 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL E PROGRESSO 100% FIÉIS AO GUILDSTATS */}
-              <div className="mt-2">
-                <div className="flex justify-between text-sm font-semibold mb-1">
-                  <span>Level {currentLevel}</span>
-                  <span className="text-yellow-400">
-                    {calculatedProgress.toFixed(1)}% pro próx. lvl
-                  </span>
-                </div>
-                <div className="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-emerald-400 h-2.5 transition-all duration-500" 
-                    style={{ width: `${calculatedProgress}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-400 mt-1.5 text-right">
-                  Falta: <span className="text-gray-200 font-mono">{xpRemaining.toLocaleString("pt-BR")} XP</span>
-                </p>
+              {/* BARRA FIXA - ESPERA O CARREGAMENTO INICIAL */}
+              <div className="mt-2 min-h-[60px]">
+                {!isLoaded ? (
+                  <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-sm font-semibold mb-1">
+                      <span>Level {currentLevel}</span>
+                      <span className="text-yellow-400">
+                        {calculatedProgress.toFixed(1)}% pro próx. lvl
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-emerald-400 h-2.5 transition-all duration-500" 
+                        style={{ width: `${calculatedProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1.5 text-right">
+                      Falta: <span className="text-gray-200 font-mono">{xpRemaining.toLocaleString("pt-BR")} XP</span>
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>
