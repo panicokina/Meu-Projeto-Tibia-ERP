@@ -210,7 +210,7 @@ export default function Home() {
     const hasLoot = /Loot:\s*/i.test(analyzer);
     const hasSupplies = /Supplies:\s*/i.test(analyzer);
     const hasBalance = /Balance:\s*/i.test(analyzer);
-    const hasXp = /(?:Raw\s*XP Gain|XP Gain):\s*/i.test(analyzer);
+    const hasXp = /(?:^|[\r\n])\s*XP Gain:\s*/i.test(analyzer);
 
     if (!hasLoot || !hasSupplies || !hasBalance || !hasXp) {
       setErrorMessage(
@@ -222,12 +222,9 @@ export default function Home() {
     const lootValue = parseTibiaValue(/Loot:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
     const suppliesValue = parseTibiaValue(/Supplies:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
     const balanceValue = parseTibiaValue(/Balance:\s*([-\d.,kK]+)/i);
-    
-    // Captura primeiro XP Gain que NÃO seja Raw XP Gain, se não achar captura qualquer XP Gain
-    let xpValue = parseTibiaValue(/(?:^|\s)(?<!Raw\s*)XP Gain:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
-    if (xpValue === 0) {
-      xpValue = parseTibiaValue(/XP Gain:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
-    }
+
+    // Captura estritamente 'XP Gain:' no início da linha, ignorando 'Raw XP Gain:' e 'XP/h:'
+    const xpValue = parseTibiaValue(/(?:^|[\r\n])\s*XP Gain:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
 
     const tcEarned = balanceValue / tcPrice;
 
