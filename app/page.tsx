@@ -143,10 +143,37 @@ export default function Home() {
       return;
     }
 
-    const hasLoot = /Loot:\s*/.test(analyzer);
-    const hasSupplies = /Supplies:\s*/.test(analyzer);
-    const hasBalance = /Balance:\s*/.test(analyzer);
-    const hasXp = /(?:^|\n)\s*XP Gain:\s*/.test(analyzer);
+    // Função para extrair e converter números do Hunt Analyzer do Tibia
+    const parseTibiaValue = (prefixPattern: RegExp) => {
+      const match = analyzer.match(prefixPattern);
+      if (!match) return 0;
+
+      const rawValue = match[1].trim();
+      const isNegative = rawValue.includes("-");
+
+      const isKK = /kk/i.test(rawValue);
+      const isK = /k/i.test(rawValue) && !isKK;
+
+      let clean = rawValue.replace(/[^\d.,]/g, "");
+
+      if (isK || isKK) {
+        clean = clean.replace(",", ".");
+        let num = parseFloat(clean) || 0;
+        if (isK) num *= 1_000;
+        if (isKK) num *= 1_000_000;
+        return isNegative ? -num : num;
+      }
+
+      clean = clean.replace(/[.,]/g, "");
+      let num = parseInt(clean, 10) || 0;
+
+      return isNegative ? -num : num;
+    };
+
+    const hasLoot = /Loot:\s*/i.test(analyzer);
+    const hasSupplies = /Supplies:\s*/i.test(analyzer);
+    const hasBalance = /Balance:\s*/i.test(analyzer);
+    const hasXp = /XP Gain:\s*/i.test(analyzer);
 
     if (!hasLoot || !hasSupplies || !hasBalance || !hasXp) {
       setErrorMessage(
@@ -155,15 +182,10 @@ export default function Home() {
       return;
     }
 
-    const lootMatch = analyzer.match(/Loot:\s*([\d.]+)/);
-    const suppliesMatch = analyzer.match(/Supplies:\s*([\d.]+)/);
-    const balanceMatch = analyzer.match(/Balance:\s*([\d.]+)/);
-    const xpMatch = analyzer.match(/(?:^|\n)\s*XP Gain:\s*([\d.]+)/);
-
-    const lootValue = lootMatch ? Number(lootMatch[1].replace(/\./g, "")) : 0;
-    const suppliesValue = suppliesMatch ? Number(suppliesMatch[1].replace(/\./g, "")) : 0;
-    const balanceValue = balanceMatch ? Number(balanceMatch[1].replace(/\./g, "")) : 0;
-    const xpValue = xpMatch ? Number(xpMatch[1].replace(/\./g, "")) : 0;
+    const lootValue = parseTibiaValue(/Loot:\s*([^\r\n]+)/i);
+    const suppliesValue = parseTibiaValue(/Supplies:\s*([^\r\n]+)/i);
+    const balanceValue = parseTibiaValue(/Balance:\s*([^\r\n]+)/i);
+    const xpValue = parseTibiaValue(/XP Gain:\s*([^\r\n]+)/i);
 
     const tcEarned = balanceValue / tcPrice;
 
@@ -273,7 +295,9 @@ export default function Home() {
               <h2 className="text-gray-400 text-sm mb-1">Saldo Consolidado</h2>
               <div className="flex items-center gap-2">
                 <img src={CRYSTAL_COIN_ICON} alt="Crystal Coin" className="w-6 h-6 object-contain" />
-                <p className="text-xl font-bold text-green-400">{balance.toLocaleString("pt-BR")} GP</p>
+                <p className={`text-xl font-bold ${balance >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {balance.toLocaleString("pt-BR")} GP
+                </p>
               </div>
             </div>
 
@@ -291,7 +315,11 @@ export default function Home() {
               <h2 className="text-gray-400 text-sm mb-1">XP Acumulada</h2>
               <div className="flex items-center gap-2">
                 <img src={REALITY_REAVER_ICON} alt="Reality Reaver" className="w-6 h-6 object-contain" />
-                <p className="text-xl font-bold text-emerald-400">{totalXp.toLocaleString("pt-BR")}</p>
+                <p className="text-xl font-bold text-emerald-400">
+                  {totalXp >= 1_000_000
+                    ? `${(totalXp / 1_000_000).toFixed(2)}kk`
+                    : totalXp.toLocaleString("pt-BR")}
+                </p>
               </div>
             </div>
 
@@ -437,7 +465,7 @@ export default function Home() {
                             {hunt.supplies.toLocaleString("pt-BR")} GP
                           </div>
                         </td>
-                        <td>
+                        <td className={hunt.balance >= 0 ? "text-green-400" : "text-red-400"}>
                           <div className="flex items-center gap-1.5">
                             <img src={CRYSTAL_COIN_ICON} alt="CC" className="w-4 h-4 object-contain" />
                             {hunt.balance.toLocaleString("pt-BR")} GP
