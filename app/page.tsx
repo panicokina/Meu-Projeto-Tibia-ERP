@@ -25,6 +25,12 @@ export default function Home() {
 
   const [history, setHistory] = useState<Hunt[]>([]);
 
+  // Estado para controlar se o histórico está visível ou oculto
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Mensagem de erro ao tentar importar
+  const [errorMessage, setErrorMessage] = useState("");
+
   // Flag para controle de carregamento do localStorage
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -58,7 +64,7 @@ export default function Home() {
 
   // 2. Salva no localStorage somente APÓS os dados iniciais serem carregados
   useEffect(() => {
-    if (!isLoaded) return; 
+    if (!isLoaded) return;
 
     localStorage.setItem(
       "tibiaERP",
@@ -86,11 +92,29 @@ export default function Home() {
   ]);
 
   function importHunt() {
+    setErrorMessage(""); // Limpa mensagem de erro anterior
+
+    if (!analyzer.trim()) {
+      setErrorMessage("Por favor, cole o texto do Hunt Analyzer antes de importar.");
+      return;
+    }
+
+    // Validação de formato: verifica se o texto realmente é do Tibia
+    const hasLoot = /Loot:\s*/.test(analyzer);
+    const hasSupplies = /Supplies:\s*/.test(analyzer);
+    const hasBalance = /Balance:\s*/.test(analyzer);
+    const hasXp = /(?:^|\n)\s*XP Gain:\s*/.test(analyzer);
+
+    if (!hasLoot || !hasSupplies || !hasBalance || !hasXp) {
+      setErrorMessage(
+        "Formato inválido! Certifique-se de copiar todo o bloco do Hunt Analyzer do Tibia (deve conter Loot, Supplies, Balance e XP Gain)."
+      );
+      return;
+    }
+
     const lootMatch = analyzer.match(/Loot:\s*([\d.]+)/);
     const suppliesMatch = analyzer.match(/Supplies:\s*([\d.]+)/);
     const balanceMatch = analyzer.match(/Balance:\s*([\d.]+)/);
-    
-    // Busca estritamente por "XP Gain:" (ignorando o Raw XP Gain)
     const xpMatch = analyzer.match(/(?:^|\n)\s*XP Gain:\s*([\d.]+)/);
 
     const lootValue = lootMatch
@@ -129,7 +153,6 @@ export default function Home() {
     };
 
     setHistory((prev) => [newHunt, ...prev]);
-
     setAnalyzer("");
   }
 
@@ -150,7 +173,6 @@ export default function Home() {
       setTotalXp(0);
       setHistory([]);
       
-      // Fecha modal e limpa os campos de senha
       setShowAuthModal(false);
       setAuthUsername("");
       setAuthPassword("");
@@ -262,12 +284,19 @@ export default function Home() {
 
           <textarea
             value={analyzer}
-            onChange={(e) =>
-              setAnalyzer(e.target.value)
-            }
+            onChange={(e) => {
+              setAnalyzer(e.target.value);
+              if (errorMessage) setErrorMessage("");
+            }}
             className="w-full h-64 bg-[#0B1020] p-4 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
-            placeholder="Cole aqui o Hunt Analyzer..."
+            placeholder="Cole aqui o Hunt Analyzer do Tibia..."
           />
+
+          {errorMessage && (
+            <p className="mt-2 text-red-400 font-medium text-sm">
+              ⚠️ {errorMessage}
+            </p>
+          )}
 
           <div className="flex gap-3 mt-4">
             <button
@@ -286,56 +315,72 @@ export default function Home() {
           </div>
         </div>
 
+        {/* HISTÓRICO EXPANDÍVEL / OCULTÁVEL */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
-          <h2 className="text-2xl mb-4 font-bold">
-            Histórico de Hunts
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">
+              Histórico de Hunts ({history.length})
+            </h2>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left border-b border-slate-700 text-gray-400">
-                  <th className="pb-2">Data</th>
-                  <th className="pb-2">XP</th>
-                  <th className="pb-2">Loot</th>
-                  <th className="pb-2">Supplies</th>
-                  <th className="pb-2">Balance</th>
-                  <th className="pb-2">TC</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {history.map((hunt) => (
-                  <tr
-                    key={hunt.id}
-                    className="border-b border-slate-800 hover:bg-[#0B1020]/50"
-                  >
-                    <td className="py-2">{hunt.date}</td>
-
-                    <td className="text-emerald-400 font-medium">
-                      {(hunt.xp || 0).toLocaleString("pt-BR")}
-                    </td>
-
-                    <td>
-                      {hunt.loot.toLocaleString("pt-BR")} GP
-                    </td>
-
-                    <td>
-                      {hunt.supplies.toLocaleString("pt-BR")} GP
-                    </td>
-
-                    <td>
-                      {hunt.balance.toLocaleString("pt-BR")} GP
-                    </td>
-
-                    <td>
-                      {hunt.tc.toFixed(1)} TC
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="bg-slate-800 hover:bg-slate-700 text-gray-200 px-4 py-2 rounded font-semibold text-sm transition border border-slate-700"
+            >
+              {showHistory ? "▲ Ocultar Histórico" : "▼ Exibir Histórico"}
+            </button>
           </div>
+
+          {showHistory && (
+            <div className="mt-6 overflow-x-auto">
+              {history.length === 0 ? (
+                <p className="text-gray-400 text-center py-4">Nenhuma hunt registrada até o momento.</p>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b border-slate-700 text-gray-400">
+                      <th className="pb-2">Data</th>
+                      <th className="pb-2">XP</th>
+                      <th className="pb-2">Loot</th>
+                      <th className="pb-2">Supplies</th>
+                      <th className="pb-2">Balance</th>
+                      <th className="pb-2">TC</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {history.map((hunt) => (
+                      <tr
+                        key={hunt.id}
+                        className="border-b border-slate-800 hover:bg-[#0B1020]/50"
+                      >
+                        <td className="py-2">{hunt.date}</td>
+
+                        <td className="text-emerald-400 font-medium">
+                          {(hunt.xp || 0).toLocaleString("pt-BR")}
+                        </td>
+
+                        <td>
+                          {hunt.loot.toLocaleString("pt-BR")} GP
+                        </td>
+
+                        <td>
+                          {hunt.supplies.toLocaleString("pt-BR")} GP
+                        </td>
+
+                        <td>
+                          {hunt.balance.toLocaleString("pt-BR")} GP
+                        </td>
+
+                        <td>
+                          {hunt.tc.toFixed(1)} TC
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
         </div>
       </main>
 
