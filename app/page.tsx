@@ -26,7 +26,7 @@ interface CharData {
   error: boolean;
 }
 
-// FÓRMULA PRECISA DE XP TOTAL POR LEVEL DO TIBIA
+// FÓRMULA OFICIAL DE XP POR LEVEL
 function getXpForLevel(level: number): number {
   if (level <= 1) return 0;
   const n = BigInt(level);
@@ -34,9 +34,8 @@ function getXpForLevel(level: number): number {
   return Number(xp);
 }
 
-// DADOS BASE DO CHAR
-const INITIAL_CHAR_EXP = 5127830738; // 5.127.830.738 XP inicial exato
-const INITIAL_CHAR_LEVEL = 677;
+// XP INICIAL DO GREEY KINA NO LEVEL 677
+const INITIAL_CHAR_EXP = 5127830738;
 
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina"; 
@@ -51,7 +50,7 @@ export default function Home() {
 
   const [charData, setCharData] = useState<CharData>({
     name: CHARACTER_NAME,
-    level: INITIAL_CHAR_LEVEL,
+    level: 677,
     vocation: "Elite Knight",
     world: "Inabra",
     loading: false,
@@ -78,30 +77,22 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // CÁLCULO DE PROGRESSO DE LEVEL PRECISO
+  // CÁLCULO DIRETO SEM ALTERAR O LEVEL REGISTRADO
+  const currentLevel = charData.level || 677;
   const currentTotalExp = INITIAL_CHAR_EXP + totalXp;
-  
-  // Calcula dinamicamente o level correto de acordo com a XP total acumulada
-  let calculatedLevel = charData.level;
-  let startLvlXp = getXpForLevel(calculatedLevel);
-  let nextLvlXp = getXpForLevel(calculatedLevel + 1);
 
-  // Se a XP ultrapassar o próximo level, avança o level automaticamente
-  while (currentTotalExp >= nextLvlXp) {
-    calculatedLevel++;
-    startLvlXp = nextLvlXp;
-    nextLvlXp = getXpForLevel(calculatedLevel + 1);
-  }
+  const startLvlXp = getXpForLevel(currentLevel);
+  const nextLvlXp = getXpForLevel(currentLevel + 1);
 
   const xpNeededForCurrentLvl = nextLvlXp - startLvlXp;
   const xpGainedInCurrentLvl = currentTotalExp - startLvlXp;
-  
+
   const calculatedProgress = Math.min(
     Math.max((xpGainedInCurrentLvl / xpNeededForCurrentLvl) * 100, 0),
     100
   );
 
-  const xpRemaining = nextLvlXp - currentTotalExp;
+  const xpRemaining = Math.max(nextLvlXp - currentTotalExp, 0);
 
   const fetchCharData = async () => {
     setCharData((prev) => ({ ...prev, loading: true, error: false }));
@@ -115,7 +106,7 @@ export default function Home() {
       if (character) {
         setCharData({
           name: character.name,
-          level: character.level || INITIAL_CHAR_LEVEL,
+          level: character.level || 677,
           vocation: character.vocation,
           world: character.world,
           loading: false,
@@ -350,10 +341,10 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL E PROGRESSO CORRIGIDOS */}
+              {/* LEVEL FIXO NO 677 + PROGRESSO DE 91.27% */}
               <div className="mt-2">
                 <div className="flex justify-between text-sm font-semibold mb-1">
-                  <span>Level {calculatedLevel}</span>
+                  <span>Level {currentLevel}</span>
                   <span className="text-yellow-400">
                     {calculatedProgress.toFixed(2)}% pro próx. lvl
                   </span>
@@ -371,7 +362,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* CARDS DE METRICAS */}
+          {/* METRICAS */}
           <div className="xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
@@ -431,7 +422,7 @@ export default function Home() {
 
         </div>
 
-        {/* META TIBIA COINS */}
+        {/* META TC */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
           <div className="flex items-center gap-2 mb-2">
             <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-5 h-5 object-contain" />
@@ -447,7 +438,7 @@ export default function Home() {
           <p className="mt-2 text-sm text-gray-400">{progressGoal.toFixed(2)}%</p>
         </div>
 
-        {/* VALOR DA TIBIA COIN */}
+        {/* PREÇO TC */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
           <div className="flex items-center gap-2 mb-4">
             <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-5 h-5 object-contain" />
@@ -570,7 +561,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* MODAL AUTH */}
+      {/* MODAL DE AUTENTICAÇÃO */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#151B31] p-6 rounded-xl w-full max-w-sm border border-gray-700 shadow-2xl">
