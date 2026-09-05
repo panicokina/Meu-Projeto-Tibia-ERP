@@ -181,8 +181,8 @@ export default function Home() {
       return;
     }
 
-    const parseTibiaValue = (prefixPattern: RegExp) => {
-      const match = analyzer.match(prefixPattern);
+    const parseTibiaValue = (pattern: RegExp) => {
+      const match = analyzer.match(pattern);
       if (!match) return 0;
 
       const rawValue = match[1].trim();
@@ -210,7 +210,7 @@ export default function Home() {
     const hasLoot = /Loot:\s*/i.test(analyzer);
     const hasSupplies = /Supplies:\s*/i.test(analyzer);
     const hasBalance = /Balance:\s*/i.test(analyzer);
-    const hasXp = /(?:^|\n)\s*(?<!Raw\s*)XP Gain:\s*/i.test(analyzer);
+    const hasXp = /(?:Raw\s*XP Gain|XP Gain):\s*/i.test(analyzer);
 
     if (!hasLoot || !hasSupplies || !hasBalance || !hasXp) {
       setErrorMessage(
@@ -219,10 +219,15 @@ export default function Home() {
       return;
     }
 
-    const lootValue = parseTibiaValue(/Loot:\s*([^\r\n]+)/i);
-    const suppliesValue = parseTibiaValue(/Supplies:\s*([^\r\n]+)/i);
-    const balanceValue = parseTibiaValue(/Balance:\s*([^\r\n]+)/i);
-    const xpValue = parseTibiaValue(/(?:^|\n)\s*(?<!Raw\s*)XP Gain:\s*([^\r\n]+)/i);
+    const lootValue = parseTibiaValue(/Loot:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
+    const suppliesValue = parseTibiaValue(/Supplies:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
+    const balanceValue = parseTibiaValue(/Balance:\s*([-\d.,kK]+)/i);
+    
+    // Captura primeiro XP Gain que NÃO seja Raw XP Gain, se não achar captura qualquer XP Gain
+    let xpValue = parseTibiaValue(/(?:^|\s)(?<!Raw\s*)XP Gain:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
+    if (xpValue === 0) {
+      xpValue = parseTibiaValue(/XP Gain:\s*([^\r\n,a-zA-Z]+|\d+[\d.,]*)/i);
+    }
 
     const tcEarned = balanceValue / tcPrice;
 
