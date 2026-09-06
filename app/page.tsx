@@ -17,16 +17,7 @@ interface Hunt {
   xp: number;
 }
 
-// -----------------------------------------------------------------------------
-// FÓRMULAS MATEMÁTICAS OFICIAIS DO TIBIA (XP TABELADA / MATEMÁTICA)
-// -----------------------------------------------------------------------------
-
-// XP total acumulada desde o level 1 até o level L
-function getTotalXpForLevel(level: number): number {
-  return (50 / 3) * Math.pow(level - 1, 3) - 100 * Math.pow(level - 1, 2) + (850 / 3) * (level - 1);
-}
-
-// XP necessária para ir do level L para o level L + 1
+// FÓRMULA OFICIAL DE XP DO TIBIA
 function getXpToNextLevel(level: number): number {
   return 50 * Math.pow(level, 2) - 150 * level + 100;
 }
@@ -42,7 +33,6 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  // Dados fixos do Personagem (Sem API do Tibia)
   const [charData] = useState({
     name: CHARACTER_NAME,
     vocation: "Elite Knight",
@@ -58,16 +48,9 @@ export default function Home() {
   const [hunts, setHunts] = useState(0);
   const [totalXp, setTotalXp] = useState(0);
 
-  // ---------------------------------------------------------------------------
-  // PONTO DE PARTIDA FIXADO NO SEU LEVEL E XP FALTANTE ATUAL (LEVEL 678)
-  // ---------------------------------------------------------------------------
-  // Lvl 678 precisa de 22.919.100 no total. 
-  // Faltam 8.794.023 -> Já conquistou 14.125.077 XP neste level.
+  // BASE FIXA: LEVEL 678 (Já fez 14.125.077 XP do level)
   const BASE_LEVEL = 678;
   const INITIAL_XP_IN_LEVEL = 14125077; 
-
-  // XP obtida via Hunt Analyzer acumulada no dashboard
-  const [sessionXpGained, setSessionXpGained] = useState(0);
 
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -83,15 +66,14 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // ---------------------------------------------------------------------------
-  // CÁLCULO DINÂMICO DE LEVEL E PROGRESSO
-  // ---------------------------------------------------------------------------
-  // Calcula dinamicamente o level atual considerando a XP inicial + XP das hunts
+  // Soma APENAS a XP presente no histórico atual de hunts
+  const xpGainedFromHistory = history.reduce((acc, h) => acc + (h.xp || 0), 0);
+
+  // CÁLCULO DINÂMICO DE LEVEL CORRIGIDO
   let currentLevel = BASE_LEVEL;
-  let currentLevelXpProgress = INITIAL_XP_IN_LEVEL + sessionXpGained;
+  let currentLevelXpProgress = INITIAL_XP_IN_LEVEL + xpGainedFromHistory;
   let requiredXpForCurrentLevel = getXpToNextLevel(currentLevel);
 
-  // Se o jogador upar de level com as hunts coladas, o level avança automaticamente!
   while (currentLevelXpProgress >= requiredXpForCurrentLevel) {
     currentLevelXpProgress -= requiredXpForCurrentLevel;
     currentLevel += 1;
@@ -125,10 +107,7 @@ export default function Home() {
           setBalance(Number(data.balance) || 0);
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
-          
-          const loadedTotalXp = Number(data.total_xp) || 0;
-          setTotalXp(loadedTotalXp);
-          setSessionXpGained(loadedTotalXp); // Associa as hunts salvas à progressão
+          setTotalXp(Number(data.total_xp) || 0);
           setHistory(data.history || []);
         }
       } catch (err) {
@@ -245,7 +224,6 @@ export default function Home() {
     setSupplies(updatedSupplies);
     setBalance(updatedBalance);
     setTotalXp(updatedXp);
-    setSessionXpGained((prev) => prev + xpValue);
     setHunts(updatedHunts);
     setHistory(updatedHistory);
     setAnalyzer("");
@@ -281,7 +259,6 @@ export default function Home() {
         setBalance(0);
         setHunts(0);
         setTotalXp(0);
-        setSessionXpGained(0);
         setHistory([]);
         await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, []);
         alert("Todos os dados foram apagados com sucesso!");
@@ -297,7 +274,6 @@ export default function Home() {
         setSupplies(updatedSupplies);
         setBalance(updatedBalance);
         setTotalXp(updatedXp);
-        setSessionXpGained((prev) => Math.max(prev - (huntToDelete.xp || 0), 0));
         setHunts(updatedHunts);
         setHistory(updatedHistory);
 
@@ -357,7 +333,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* BARRA DE PROGRESSO DINÂMICA E SEM API */}
+              {/* BARRA DE PROGRESSO DINÂMICA */}
               <div className="mt-2 min-h-[60px]">
                 {!isLoaded ? (
                   <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
