@@ -29,7 +29,6 @@ interface CharData {
 // -------------------------------------------------------------
 // FÓRMULA MATEMÁTICA OFICIAL DO TIBIA
 // -------------------------------------------------------------
-// XP total necessária para ir do level L para L+1
 function getXpToNextLevel(level: number): number {
   return 50 * Math.pow(level, 2) - 150 * level + 100;
 }
@@ -63,7 +62,7 @@ export default function Home() {
   const [hunts, setHunts] = useState(0);
   const [totalXp, setTotalXp] = useState(0);
 
-  // Armazena o XP ganho em hunts especificamente para o level atual
+  // XP ganho em hunts para o level atual
   const [sessionLevelXp, setSessionLevelXp] = useState(0);
 
   const [history, setHistory] = useState<Hunt[]>([]);
@@ -71,9 +70,12 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Modal de Autenticação (serve para limpar tudo ou apagar item do histórico)
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authUsername, setAuthUsername] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [actionToConfirm, setActionToConfirm] = useState<"clearAll" | "deleteHunt" | null>(null);
+  const [huntToDelete, setHuntToDelete] = useState<Hunt | null>(null);
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
@@ -81,24 +83,16 @@ export default function Home() {
   // PROGRESSO DINÂMICO DO LEVEL
   // -------------------------------------------------------------
   const currentLevel = charData.level || 677;
-
-  // XP necessária para passar deste level para o próximo
   const xpRequiredForThisLevel = getXpToNextLevel(currentLevel);
-
-  // % base do char no level (8.7% no lvl 677)
   const initialPercent = currentLevel === 677 ? 8.7 : 0;
   const initialXpInLevel = (initialPercent / 100) * xpRequiredForThisLevel;
-
-  // XP total acumulada no level atual (XP base + XP das novas hunts importadas)
   const accumulatedLevelXp = initialXpInLevel + sessionLevelXp;
 
-  // Porcentagem calculada em tempo real (limitada a 100%)
   const calculatedProgress = Math.min(
     (accumulatedLevelXp / xpRequiredForThisLevel) * 100,
     100
   );
 
-  // Quanto XP ainda falta para o próximo level
   const xpRemaining = Math.max(xpRequiredForThisLevel - accumulatedLevelXp, 0);
 
   const fetchCharData = async () => {
@@ -111,7 +105,6 @@ export default function Home() {
 
       if (character) {
         setCharData((prev) => {
-          // Se o level subiu na API, reseta o acúmulo de XP da sessão do level
           if (character.level && character.level > prev.level) {
             setSessionLevelXp(0);
           }
@@ -273,9 +266,7 @@ export default function Home() {
     setHunts(updatedHunts);
     setHistory(updatedHistory);
     
-    // Incrementa a XP da sessão para fazer a barra progredir em tempo real
     setSessionLevelXp((prev) => prev + xpValue);
-
     setAnalyzer("");
 
     saveDataToSupabase(
@@ -289,25 +280,66 @@ export default function Home() {
     );
   }
 
+  // ABRIR MODAL PARA LIMPAR TUDO
   function handleClearDataClick() {
+    setActionToConfirm("clearAll");
+    setHuntToDelete(null);
     setShowAuthModal(true);
   }
 
-  async function confirmClearData() {
+  // ABRIR MODAL PARA DELETAR HUNT INDIVIDUAL
+  function handleDeleteHuntClick(hunt: Hunt) {
+    setActionToConfirm("deleteHunt");
+    setHuntToDelete(hunt);
+    setShowAuthModal(true);
+  }
+
+  // CONFIRMAÇÃO DO MODAL
+  async function confirmAuthAction() {
     if (authUsername === "panicao" && authPassword === "panicao") {
-      setLoot(0);
-      setSupplies(0);
-      setBalance(0);
-      setHunts(0);
-      setTotalXp(0);
-      setSessionLevelXp(0);
-      setHistory([]);
+      if (actionToConfirm === "clearAll") {
+        setLoot(0);
+        setSupplies(0);
+        setBalance(0);
+        setHunts(0);
+        setTotalXp(0);
+        setSessionLevelXp(0);
+        setHistory([]);
+        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, []);
+        alert("Todos os dados foram apagados com sucesso!");
+      } else if (actionToConfirm === "deleteHunt" && huntToDelete) {
+        const updatedHistory = history.filter((h) => h.id !== huntToDelete.id);
+        const updatedLoot = loot - huntToDelete.loot;
+        const updatedSupplies = supplies - huntToDelete.supplies;
+        const updatedBalance = balance - huntToDelete.balance;
+        const updatedXp = totalXp - (huntToDelete.xp || 0);
+        const updatedHunts = Math.max(hunts - 1, 0);
+
+        setLoot(updatedLoot);
+        setSupplies(updatedSupplies);
+        setBalance(updatedBalance);
+        setTotalXp(updatedXp);
+        setHunts(updatedHunts);
+        setHistory(updatedHistory);
+        setSessionLevelXp((prev) => Math.max(prev - (huntToDelete.xp || 0), 0));
+
+        await saveDataToSupabase(
+          updatedLoot,
+          updatedSupplies,
+          updatedBalance,
+          updatedHunts,
+          tcPrice,
+          updatedXp,
+          updatedHistory
+        );
+        alert("Hunt removida com sucesso!");
+      }
+
       setShowAuthModal(false);
       setAuthUsername("");
       setAuthPassword("");
-
-      await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, []);
-      alert("Dados apagados com sucesso!");
+      setActionToConfirm(null);
+      setHuntToDelete(null);
     } else {
       alert("Usuário ou senha incorretos!");
     }
@@ -354,7 +386,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* BARRA DE PROGRESSO DINÂMICA */}
+              {/* BARRA DE PROGRESSO */}
               <div className="mt-2 min-h-[60px]">
                 {!isLoaded ? (
                   <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
@@ -381,7 +413,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* MÉTRICAS DAS HUNTS */}
+          {/* MÉTRICAS */}
           <div className="xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
@@ -498,12 +530,12 @@ export default function Home() {
               onClick={handleClearDataClick}
               className="bg-red-600 px-6 py-2 rounded font-bold hover:bg-red-500 transition"
             >
-              Limpar Dados
+              Limpar Tudo
             </button>
           </div>
         </div>
 
-        {/* HISTÓRICO */}
+        {/* HISTÓRICO DE HUNTS */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">Histórico de Hunts ({history.length})</h2>
@@ -520,15 +552,16 @@ export default function Home() {
               {history.length === 0 ? (
                 <p className="text-gray-400 text-center py-4">Nenhuma hunt registrada até o momento.</p>
               ) : (
-                <table className="w-full">
+                <table className="w-full text-left">
                   <thead>
-                    <tr className="text-left border-b border-slate-700 text-gray-400">
+                    <tr className="border-b border-slate-700 text-gray-400">
                       <th className="pb-2">Data</th>
                       <th className="pb-2">XP</th>
                       <th className="pb-2">Loot</th>
                       <th className="pb-2">Supplies</th>
                       <th className="pb-2">Balance</th>
                       <th className="pb-2">TC</th>
+                      <th className="pb-2 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -536,7 +569,7 @@ export default function Home() {
                       const huntTc = tcPrice > 0 ? hunt.balance / tcPrice : 0;
                       return (
                         <tr key={hunt.id} className="border-b border-slate-800 hover:bg-[#0B1020]/50">
-                          <td className="py-2">{hunt.date}</td>
+                          <td className="py-3 text-sm">{hunt.date}</td>
                           <td className="text-emerald-400 font-medium">
                             <div className="flex items-center gap-1.5">
                               <img src={REALITY_REAVER_ICON} alt="XP" className="w-4 h-4 object-contain" />
@@ -569,6 +602,15 @@ export default function Home() {
                               {huntTc.toFixed(1)} TC
                             </div>
                           </td>
+                          <td className="text-center">
+                            <button
+                              onClick={() => handleDeleteHuntClick(hunt)}
+                              className="bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white px-2.5 py-1 rounded text-xs font-bold transition border border-red-500/30"
+                              title="Excluir apenas esta hunt"
+                            >
+                              ✕
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -584,8 +626,14 @@ export default function Home() {
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#151B31] p-6 rounded-xl w-full max-w-sm border border-gray-700 shadow-2xl">
-            <h2 className="text-xl font-bold mb-2 text-red-500">Área Restrita</h2>
-            <p className="mb-6 text-sm text-gray-400">Insira as credenciais para apagar os dados.</p>
+            <h2 className="text-xl font-bold mb-2 text-red-500">
+              {actionToConfirm === "clearAll" ? "Apagar Tudo" : "Apagar Hunt"}
+            </h2>
+            <p className="mb-6 text-sm text-gray-400">
+              {actionToConfirm === "clearAll"
+                ? "Insira as credenciais para apagar todos os dados do dashboard."
+                : `Insira as credenciais para excluir a hunt do dia ${huntToDelete?.date || ""}.`}
+            </p>
             <div className="mb-4">
               <label className="block text-sm mb-1 text-gray-300">Usuário</label>
               <input 
@@ -606,16 +654,22 @@ export default function Home() {
             </div>
             <div className="flex gap-3 justify-end">
               <button 
-                onClick={() => setShowAuthModal(false)}
-                className="px-4 py-2 rounded text-gray-400 hover:text-white"
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setAuthUsername("");
+                  setAuthPassword("");
+                  setActionToConfirm(null);
+                  setHuntToDelete(null);
+                }}
+                className="px-4 py-2 rounded text-gray-400 hover:text-white text-sm"
               >
                 Cancelar
               </button>
               <button 
-                onClick={confirmClearData}
-                className="bg-red-600 px-6 py-2 rounded font-bold text-white"
+                onClick={confirmAuthAction}
+                className="bg-red-600 px-6 py-2 rounded font-bold text-white text-sm hover:bg-red-500 transition"
               >
-                Apagar
+                Confirmar Exclusão
               </button>
             </div>
           </div>
