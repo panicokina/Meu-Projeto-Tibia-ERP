@@ -17,7 +17,7 @@ interface Hunt {
   xp: number;
 }
 
-// FÓRMULA OFICIAL DE XP TOTAL DO TIBIA PARA O LEVEL L: (50/3)*L^3 - 100*L^2 + (850/3)*L - 200
+// FÓRMULA OFICIAL DE XP TOTAL DO TIBIA PARA O LEVEL L
 function getXpForLevel(level: number): number {
   return Math.floor(
     (50 / 3) * Math.pow(level, 3) -
@@ -68,16 +68,17 @@ export default function Home() {
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
   // =========================================================================
-  // DADOS INICIAIS DE XP FIXADOS
-  // BASE XP TOTAL LEVEL 677 = 5.162.741.377
+  // BASE FIXA DO LEVEL 677 COM XP ATUAL E RESTANTE
   // =========================================================================
-  const INITIAL_BASE_XP = 5162741377;
+  const INITIAL_BASE_XP = 5162741377; // XP Exata do 677 informado
 
-  // XP TOTAL ATUAL = BASE + XP GANHA NAS HUNTS
-  const totalXpGainedFromHunts = history.reduce((acc, hunt) => acc + (hunt.xp || 0), 0);
-  const currentTotalXp = INITIAL_BASE_XP + totalXpGainedFromHunts;
+  // Soma APENAS o XP das hunts presentes no histórico
+  const xpGainedFromHuntsInHistory = history.reduce((acc, h) => acc + (Number(h.xp) || 0), 0);
+  
+  // XP Total acumulada real
+  const currentTotalXp = INITIAL_BASE_XP + xpGainedFromHuntsInHistory;
 
-  // CÁLCULO DINÂMICO DE LEVEL COM BASE NA XP TOTAL
+  // Cálculo do Level Dinâmico usando a tabela oficial do Tibia
   let currentLevel = 1;
   while (currentTotalXp >= getXpForLevel(currentLevel + 1)) {
     currentLevel++;
