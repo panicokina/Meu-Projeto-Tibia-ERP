@@ -17,18 +17,16 @@ interface Hunt {
   xp: number;
 }
 
-interface CharData {
-  name: string;
-  level: number;
-  vocation: string;
-  world: string;
-  loading: boolean;
-  error: boolean;
+// -----------------------------------------------------------------------------
+// FÓRMULAS MATEMÁTICAS OFICIAIS DO TIBIA (XP TABELADA / MATEMÁTICA)
+// -----------------------------------------------------------------------------
+
+// XP total acumulada desde o level 1 até o level L
+function getTotalXpForLevel(level: number): number {
+  return (50 / 3) * Math.pow(level - 1, 3) - 100 * Math.pow(level - 1, 2) + (850 / 3) * (level - 1);
 }
 
-// -------------------------------------------------------------
-// FÓRMULA MATEMÁTICA OFICIAL DO TIBIA
-// -------------------------------------------------------------
+// XP necessária para ir do level L para o level L + 1
 function getXpToNextLevel(level: number): number {
   return 50 * Math.pow(level, 2) - 150 * level + 100;
 }
@@ -44,13 +42,11 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  const [charData, setCharData] = useState<CharData>({
+  // Dados fixos do Personagem (Sem API do Tibia)
+  const [charData] = useState({
     name: CHARACTER_NAME,
-    level: 677,
     vocation: "Elite Knight",
     world: "Inabra",
-    loading: false,
-    error: false,
   });
 
   const [analyzer, setAnalyzer] = useState("");
@@ -62,15 +58,23 @@ export default function Home() {
   const [hunts, setHunts] = useState(0);
   const [totalXp, setTotalXp] = useState(0);
 
-  // XP ganho em hunts para o level atual
-  const [sessionLevelXp, setSessionLevelXp] = useState(0);
+  // ---------------------------------------------------------------------------
+  // PONTO DE PARTIDA FIXADO NO SEU LEVEL E XP FALTANTE ATUAL (LEVEL 678)
+  // ---------------------------------------------------------------------------
+  // Lvl 678 precisa de 22.919.100 no total. 
+  // Faltam 8.794.023 -> Já conquistou 14.125.077 XP neste level.
+  const BASE_LEVEL = 678;
+  const INITIAL_XP_IN_LEVEL = 14125077; 
+
+  // XP obtida via Hunt Analyzer acumulada no dashboard
+  const [sessionXpGained, setSessionXpGained] = useState(0);
 
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Modal de Autenticação (serve para limpar tudo ou apagar item do histórico)
+  // Modal de Autenticação
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authUsername, setAuthUsername] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -79,52 +83,27 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // -------------------------------------------------------------
-  // PROGRESSO DINÂMICO DO LEVEL
-  // -------------------------------------------------------------
-  const currentLevel = charData.level || 677;
-  const xpRequiredForThisLevel = getXpToNextLevel(currentLevel);
-  const initialPercent = currentLevel === 677 ? 8.7 : 0;
-  const initialXpInLevel = (initialPercent / 100) * xpRequiredForThisLevel;
-  const accumulatedLevelXp = initialXpInLevel + sessionLevelXp;
+  // ---------------------------------------------------------------------------
+  // CÁLCULO DINÂMICO DE LEVEL E PROGRESSO
+  // ---------------------------------------------------------------------------
+  // Calcula dinamicamente o level atual considerando a XP inicial + XP das hunts
+  let currentLevel = BASE_LEVEL;
+  let currentLevelXpProgress = INITIAL_XP_IN_LEVEL + sessionXpGained;
+  let requiredXpForCurrentLevel = getXpToNextLevel(currentLevel);
+
+  // Se o jogador upar de level com as hunts coladas, o level avança automaticamente!
+  while (currentLevelXpProgress >= requiredXpForCurrentLevel) {
+    currentLevelXpProgress -= requiredXpForCurrentLevel;
+    currentLevel += 1;
+    requiredXpForCurrentLevel = getXpToNextLevel(currentLevel);
+  }
 
   const calculatedProgress = Math.min(
-    (accumulatedLevelXp / xpRequiredForThisLevel) * 100,
+    (currentLevelXpProgress / requiredXpForCurrentLevel) * 100,
     100
   );
 
-  const xpRemaining = Math.max(xpRequiredForThisLevel - accumulatedLevelXp, 0);
-
-  const fetchCharData = async () => {
-    try {
-      const res = await fetch(
-        `https://api.tibiadata.com/v4/character/${encodeURIComponent(CHARACTER_NAME)}`
-      );
-      const json = await res.json();
-      const character = json.character?.character;
-
-      if (character) {
-        setCharData((prev) => {
-          if (character.level && character.level > prev.level) {
-            setSessionLevelXp(0);
-          }
-          return {
-            ...prev,
-            name: character.name,
-            level: character.level || 677,
-            vocation: character.vocation,
-            world: character.world,
-          };
-        });
-      }
-    } catch (err) {
-      console.error("Erro ao buscar dados do Tibia:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchCharData();
-  }, []);
+  const xpRemaining = Math.max(requiredXpForCurrentLevel - currentLevelXpProgress, 0);
 
   useEffect(() => {
     async function loadDataFromSupabase() {
@@ -146,7 +125,10 @@ export default function Home() {
           setBalance(Number(data.balance) || 0);
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
-          setTotalXp(Number(data.total_xp) || 0);
+          
+          const loadedTotalXp = Number(data.total_xp) || 0;
+          setTotalXp(loadedTotalXp);
+          setSessionXpGained(loadedTotalXp); // Associa as hunts salvas à progressão
           setHistory(data.history || []);
         }
       } catch (err) {
@@ -263,10 +245,9 @@ export default function Home() {
     setSupplies(updatedSupplies);
     setBalance(updatedBalance);
     setTotalXp(updatedXp);
+    setSessionXpGained((prev) => prev + xpValue);
     setHunts(updatedHunts);
     setHistory(updatedHistory);
-    
-    setSessionLevelXp((prev) => prev + xpValue);
     setAnalyzer("");
 
     saveDataToSupabase(
@@ -280,21 +261,18 @@ export default function Home() {
     );
   }
 
-  // ABRIR MODAL PARA LIMPAR TUDO
   function handleClearDataClick() {
     setActionToConfirm("clearAll");
     setHuntToDelete(null);
     setShowAuthModal(true);
   }
 
-  // ABRIR MODAL PARA DELETAR HUNT INDIVIDUAL
   function handleDeleteHuntClick(hunt: Hunt) {
     setActionToConfirm("deleteHunt");
     setHuntToDelete(hunt);
     setShowAuthModal(true);
   }
 
-  // CONFIRMAÇÃO DO MODAL
   async function confirmAuthAction() {
     if (authUsername === "panicao" && authPassword === "panicao") {
       if (actionToConfirm === "clearAll") {
@@ -303,7 +281,7 @@ export default function Home() {
         setBalance(0);
         setHunts(0);
         setTotalXp(0);
-        setSessionLevelXp(0);
+        setSessionXpGained(0);
         setHistory([]);
         await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, []);
         alert("Todos os dados foram apagados com sucesso!");
@@ -319,9 +297,9 @@ export default function Home() {
         setSupplies(updatedSupplies);
         setBalance(updatedBalance);
         setTotalXp(updatedXp);
+        setSessionXpGained((prev) => Math.max(prev - (huntToDelete.xp || 0), 0));
         setHunts(updatedHunts);
         setHistory(updatedHistory);
-        setSessionLevelXp((prev) => Math.max(prev - (huntToDelete.xp || 0), 0));
 
         await saveDataToSupabase(
           updatedLoot,
@@ -369,13 +347,6 @@ export default function Home() {
                   <h2 className="text-xl font-bold text-yellow-400">{charData.name}</h2>
                   <p className="text-xs text-gray-400">{charData.vocation} • {charData.world}</p>
                 </div>
-                <button 
-                  onClick={fetchCharData}
-                  className="text-xs bg-slate-800 hover:bg-slate-700 p-2 rounded text-gray-300 hover:text-white transition"
-                  title="Sincronizar com Tibia.com"
-                >
-                  🔄 Sincronizar
-                </button>
               </div>
 
               <div className="my-3 flex justify-center items-center bg-[#0B1020] p-2 rounded-lg min-h-[140px] border border-slate-800">
@@ -386,7 +357,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* BARRA DE PROGRESSO */}
+              {/* BARRA DE PROGRESSO DINÂMICA E SEM API */}
               <div className="mt-2 min-h-[60px]">
                 {!isLoaded ? (
                   <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
@@ -499,7 +470,7 @@ export default function Home() {
             type="number"
             value={tcPrice}
             onChange={(e) => handleTcPriceChange(Number(e.target.value))}
-            className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
+            className="w-[#100%] bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
           />
         </div>
 
