@@ -17,7 +17,7 @@ interface Hunt {
   xp: number;
 }
 
-// FÓRMULA OFICIAL DE XP DO TIBIA
+// XP necessária para avançar do level L para L+1
 function getXpToNextLevel(level: number): number {
   return 50 * Math.pow(level, 2) - 150 * level + 100;
 }
@@ -48,10 +48,6 @@ export default function Home() {
   const [hunts, setHunts] = useState(0);
   const [totalXp, setTotalXp] = useState(0);
 
-  // BASE FIXA: LEVEL 678 (Já fez 14.125.077 XP do level)
-  const BASE_LEVEL = 678;
-  const INITIAL_XP_IN_LEVEL = 14125077; 
-
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -66,14 +62,20 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // Soma APENAS a XP presente no histórico atual de hunts
-  const xpGainedFromHistory = history.reduce((acc, h) => acc + (h.xp || 0), 0);
+  // =========================================================================
+  // CÁLCULO EXCLUSIVO DO LEVEL BASEADO APENAS NAS HUNTS ANEXADAS
+  // =========================================================================
+  const BASE_LEVEL = 678;
+  const INITIAL_XP_IN_LEVEL = 17766251; // 77.8% do Level 678 (22.919.100 * 0.778)
 
-  // CÁLCULO DINÂMICO DE LEVEL CORRIGIDO
+  // Soma a XP de todas as hunts que você anexar
+  const totalXpGainedFromHunts = history.reduce((acc, hunt) => acc + (hunt.xp || 0), 0);
+
   let currentLevel = BASE_LEVEL;
-  let currentLevelXpProgress = INITIAL_XP_IN_LEVEL + xpGainedFromHistory;
+  let currentLevelXpProgress = INITIAL_XP_IN_LEVEL + totalXpGainedFromHunts;
   let requiredXpForCurrentLevel = getXpToNextLevel(currentLevel);
 
+  // Se a soma das Hunts fizer você upar, avança o level dinamicamente!
   while (currentLevelXpProgress >= requiredXpForCurrentLevel) {
     currentLevelXpProgress -= requiredXpForCurrentLevel;
     currentLevel += 1;
@@ -333,7 +335,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* BARRA DE PROGRESSO DINÂMICA */}
+              {/* BARRA DE PROGRESSO QUE SÓ RESPONDE ÀS HUNTS */}
               <div className="mt-2 min-h-[60px]">
                 {!isLoaded ? (
                   <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
