@@ -17,16 +17,6 @@ interface Hunt {
   xp: number;
 }
 
-// FÓRMULA OFICIAL DE XP TOTAL DO TIBIA PARA O LEVEL L
-function getXpForLevel(level: number): number {
-  return Math.floor(
-    (50 / 3) * Math.pow(level, 3) -
-      100 * Math.pow(level, 2) +
-      (850 / 3) * level -
-      200
-  );
-}
-
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina";
   const OUTFIT_IMAGE_URL = "/greey-kina.png";
@@ -38,10 +28,11 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  const [charData] = useState({
+  const [charData, setCharData] = useState({
     name: CHARACTER_NAME,
     vocation: "Elite Knight",
     world: "Inabra",
+    level: 677,
   });
 
   const [analyzer, setAnalyzer] = useState("");
@@ -67,31 +58,31 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // =========================================================================
-  // BASE FIXA DO LEVEL 677 COM XP ATUAL E RESTANTE
-  // =========================================================================
-  const INITIAL_BASE_XP = 5162741377; // XP Exata do 677 informado
+  // BUSCA LEVEL REALTIME NA API DO TIBIA
+  useEffect(() => {
+    async function fetchTibiaCharacter() {
+      try {
+        const response = await fetch(
+          `https://api.tibiadata.com/v4/character/${encodeURIComponent(CHARACTER_NAME)}`
+        );
+        const data = await response.json();
+        const character = data?.character?.character;
 
-  // Soma APENAS o XP das hunts presentes no histórico
-  const xpGainedFromHuntsInHistory = history.reduce((acc, h) => acc + (Number(h.xp) || 0), 0);
-  
-  // XP Total acumulada real
-  const currentTotalXp = INITIAL_BASE_XP + xpGainedFromHuntsInHistory;
+        if (character) {
+          setCharData({
+            name: character.name || CHARACTER_NAME,
+            vocation: character.vocation || "Elite Knight",
+            world: character.world || "Inabra",
+            level: character.level || 677,
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao buscar dados da API do Tibia:", err);
+      }
+    }
 
-  // Cálculo do Level Dinâmico usando a tabela oficial do Tibia
-  let currentLevel = 1;
-  while (currentTotalXp >= getXpForLevel(currentLevel + 1)) {
-    currentLevel++;
-  }
-
-  const xpCurrentLevelStart = getXpForLevel(currentLevel);
-  const xpNextLevelStart = getXpForLevel(currentLevel + 1);
-
-  const xpNeededForNextLevel = xpNextLevelStart - xpCurrentLevelStart;
-  const xpProgressInLevel = currentTotalXp - xpCurrentLevelStart;
-
-  const calculatedProgress = Math.min((xpProgressInLevel / xpNeededForNextLevel) * 100, 100);
-  const xpRemaining = Math.max(xpNextLevelStart - currentTotalXp, 0);
+    fetchTibiaCharacter();
+  }, []);
 
   useEffect(() => {
     async function loadDataFromSupabase() {
@@ -321,7 +312,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL */}
+          {/* CARD DE PERFIL COM LEVEL DA API */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -339,36 +330,12 @@ export default function Home() {
                 />
               </div>
 
-              {/* BARRA DE PROGRESSO DO LEVEL */}
-              <div className="mt-2 min-h-[70px]">
-                {!isLoaded ? (
-                  <p className="text-xs text-gray-500 text-center py-2">Carregando dados...</p>
-                ) : (
-                  <>
-                    <div className="flex justify-between text-sm font-semibold mb-1">
-                      <span>Level {currentLevel}</span>
-                      <span className="text-yellow-400">
-                        {calculatedProgress.toFixed(2)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden">
-                      <div 
-                        className="bg-emerald-400 h-2.5 transition-all duration-500" 
-                        style={{ width: `${calculatedProgress}%` }}
-                      />
-                    </div>
-                    <div className="mt-2 text-xs space-y-0.5">
-                      <p className="text-gray-400 flex justify-between">
-                        <span>XP Total:</span>
-                        <span className="text-gray-200 font-mono">{currentTotalXp.toLocaleString("pt-BR")} XP</span>
-                      </p>
-                      <p className="text-gray-400 flex justify-between">
-                        <span>Falta p/ Level {currentLevel + 1}:</span>
-                        <span className="text-yellow-400 font-mono font-bold">{Math.round(xpRemaining).toLocaleString("pt-BR")} XP</span>
-                      </p>
-                    </div>
-                  </>
-                )}
+              {/* DADOS DE LEVEL LIMPOS DA API */}
+              <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-300">Level Atual</span>
+                <span className="text-2xl font-bold text-yellow-400 font-mono">
+                  {charData.level}
+                </span>
               </div>
             </div>
           </div>
