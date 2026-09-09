@@ -23,7 +23,7 @@ function getXpTotal(level: number): number {
   return Math.round((50 / 3) * (Math.pow(level, 3) - 6 * Math.pow(level, 2) + 17 * level - 12));
 }
 
-// CALCULA LEVEL E PROGRESSO COM BASE NA XP TOTAL ACUMULADA
+// CALCULA LEVEL E PROGRESSO COM BASE NA XP TOTAL
 function calcularNivelEProgresso(xpTotalAcumulada: number) {
   let level = 1;
 
@@ -65,8 +65,10 @@ export default function Home() {
     world: "Inabra",
   });
 
-  // XP BASE QUE O JOGADOR CADASTRA/INICIA
-  const [initialXp, setInitialXp] = useState<number>(5205661792); // Ex: 5.205.661.792 (Lvl 680)
+  // XP BASE DO LEVEL 680 (sem somar o histórico antigo)
+  const XP_BASE_LVL_680 = getXpTotal(680); // 5.205.661.792
+  const [initialXp, setInitialXp] = useState<number>(XP_BASE_LVL_680);
+  const [newXpGained, setNewXpGained] = useState<number>(0);
 
   const [analyzer, setAnalyzer] = useState("");
   const [tcPrice, setTcPrice] = useState(42500);
@@ -91,8 +93,8 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // CÁLCULO EM TEMPO REAL DA XP TOTAL E NIVEL DO PERSONAGEM
-  const xpTotalPersonagem = initialXp + totalXpGained;
+  // XP TOTAL PARA O CÁLCULO = BASE DO CHAR + APENAS HUNTS NOVAS
+  const xpTotalPersonagem = initialXp + newXpGained;
   const { level: currentLevel, xpFaltante, porcentagem: xpPercentage } = calcularNivelEProgresso(xpTotalPersonagem);
 
   useEffect(() => {
@@ -116,7 +118,8 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
-          setInitialXp(Number(data.initial_xp) || 5205661792);
+          setInitialXp(Number(data.initial_xp) || XP_BASE_LVL_680);
+          setNewXpGained(Number(data.new_xp_gained) || 0);
           setHistory(data.history || []);
         }
       } catch (err) {
@@ -127,7 +130,7 @@ export default function Home() {
     }
 
     loadDataFromSupabase();
-  }, []);
+  }, [XP_BASE_LVL_680]);
 
   const saveDataToSupabase = async (
     newLoot: number,
@@ -135,9 +138,10 @@ export default function Home() {
     newBalance: number,
     newHunts: number,
     newTcPrice: number,
-    newXpGained: number,
+    newXpGainedTotal: number,
     newHistory: Hunt[],
-    newInitialXp: number = initialXp
+    newInitialXp: number = initialXp,
+    newXpFromToday: number = newXpGained
   ) => {
     if (!supabaseUrl || !supabaseAnonKey) return;
 
@@ -150,8 +154,9 @@ export default function Home() {
         hunts: newHunts,
         tibia_coins: newTcPrice > 0 ? newBalance / newTcPrice : 0,
         tc_price: newTcPrice,
-        total_xp: newXpGained,
+        total_xp: newXpGainedTotal,
         initial_xp: newInitialXp,
+        new_xp_gained: newXpFromToday,
         history: newHistory,
         updated_at: new Date().toISOString(),
       });
@@ -162,7 +167,7 @@ export default function Home() {
 
   const handleInitialXpChange = (val: number) => {
     setInitialXp(val);
-    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, val);
+    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, val, newXpGained);
   };
 
   function importHunt() {
@@ -221,7 +226,8 @@ export default function Home() {
     const updatedLoot = loot + lootValue;
     const updatedSupplies = supplies + suppliesValue;
     const updatedBalance = balance + balanceValue;
-    const updatedXpGained = totalXpGained + xpValue;
+    const updatedXpGainedTotal = totalXpGained + xpValue;
+    const updatedNewXp = newXpGained + xpValue; // Somente hunts enviadas a partir de agora
     const updatedHunts = hunts + 1;
 
     const newHunt: Hunt = {
@@ -239,7 +245,8 @@ export default function Home() {
     setLoot(updatedLoot);
     setSupplies(updatedSupplies);
     setBalance(updatedBalance);
-    setTotalXpGained(updatedXpGained);
+    setTotalXpGained(updatedXpGainedTotal);
+    setNewXpGained(updatedNewXp);
     setHunts(updatedHunts);
     setHistory(updatedHistory);
     setAnalyzer("");
@@ -250,9 +257,10 @@ export default function Home() {
       updatedBalance,
       updatedHunts,
       tcPrice,
-      updatedXpGained,
+      updatedXpGainedTotal,
       updatedHistory,
-      initialXp
+      initialXp,
+      updatedNewXp
     );
   }
 
@@ -276,21 +284,24 @@ export default function Home() {
         setBalance(0);
         setHunts(0);
         setTotalXpGained(0);
+        setNewXpGained(0);
         setHistory([]);
-        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], initialXp);
+        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], initialXp, 0);
         alert("Todos os dados foram apagados com sucesso!");
       } else if (actionToConfirm === "deleteHunt" && huntToDelete) {
         const updatedHistory = history.filter((h) => h.id !== huntToDelete.id);
         const updatedLoot = loot - huntToDelete.loot;
         const updatedSupplies = supplies - huntToDelete.supplies;
         const updatedBalance = balance - huntToDelete.balance;
-        const updatedXpGained = totalXpGained - (huntToDelete.xp || 0);
+        const updatedXpGainedTotal = totalXpGained - (huntToDelete.xp || 0);
+        const updatedNewXp = Math.max(newXpGained - (huntToDelete.xp || 0), 0);
         const updatedHunts = Math.max(hunts - 1, 0);
 
         setLoot(updatedLoot);
         setSupplies(updatedSupplies);
         setBalance(updatedBalance);
-        setTotalXpGained(updatedXpGained);
+        setTotalXpGained(updatedXpGainedTotal);
+        setNewXpGained(updatedNewXp);
         setHunts(updatedHunts);
         setHistory(updatedHistory);
 
@@ -300,9 +311,10 @@ export default function Home() {
           updatedBalance,
           updatedHunts,
           tcPrice,
-          updatedXpGained,
+          updatedXpGainedTotal,
           updatedHistory,
-          initialXp
+          initialXp,
+          updatedNewXp
         );
         alert("Hunt removida com sucesso!");
       }
@@ -319,7 +331,7 @@ export default function Home() {
 
   const handleTcPriceChange = (val: number) => {
     setTcPrice(val);
-    saveDataToSupabase(loot, supplies, balance, hunts, val, totalXpGained, history, initialXp);
+    saveDataToSupabase(loot, supplies, balance, hunts, val, totalXpGained, history, initialXp, newXpGained);
   };
 
   const progressGoal = Math.min((tibiaCoins / 5000) * 100, 100);
@@ -351,7 +363,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL CALCULADO LOCALMENTE */}
+              {/* LEVEL CALCULADO */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-gray-300">Level Atual</span>
                 <span className="text-2xl font-bold text-yellow-400 font-mono">
@@ -447,17 +459,17 @@ export default function Home() {
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
           <div className="flex items-center gap-2 mb-2">
             <img src={REALITY_REAVER_ICON} alt="XP Base" className="w-5 h-5 object-contain" />
-            <h2 className="font-semibold">XP Inicial Base do Personagem</h2>
+            <h2 className="font-semibold">XP Base Inicial do Personagem (Sem somar com histórico antigo)</h2>
           </div>
           <p className="text-xs text-gray-400 mb-3">
-            Insira a XP total que o seu char possuía antes de começar a registrar as hunts no dashboard.
+            Defina a XP com a qual o char começa. As hunts antigas não serão somadas nesta XP.
           </p>
           <input
             type="number"
             value={initialXp}
             onChange={(e) => handleInitialXpChange(Number(e.target.value))}
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono"
-            placeholder="Ex: 5205661792"
+            placeholder="Ex: 5048181800"
           />
         </div>
 
