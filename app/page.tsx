@@ -65,9 +65,9 @@ export default function Home() {
     world: "Inabra",
   });
 
-  // XP BASE DO LEVEL 680 (sem somar o histórico antigo)
-  const XP_BASE_LVL_680 = getXpTotal(680); // 5.205.661.792
-  const [initialXp, setInitialXp] = useState<number>(XP_BASE_LVL_680);
+  // XP ATUAL DO SEU LEVEL 680
+  const EXACT_XP_LVL_680 = 5205701732;
+  const [initialXp, setInitialXp] = useState<number>(EXACT_XP_LVL_680);
   const [newXpGained, setNewXpGained] = useState<number>(0);
 
   const [analyzer, setAnalyzer] = useState("");
@@ -93,7 +93,7 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // XP TOTAL PARA O CÁLCULO = BASE DO CHAR + APENAS HUNTS NOVAS
+  // XP TOTAL PARA O CÁLCULO = BASE DO CHAR + HUNTS NOVAS
   const xpTotalPersonagem = initialXp + newXpGained;
   const { level: currentLevel, xpFaltante, porcentagem: xpPercentage } = calcularNivelEProgresso(xpTotalPersonagem);
 
@@ -118,19 +118,19 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
-          setInitialXp(Number(data.initial_xp) || XP_BASE_LVL_680);
+          setInitialXp(Number(data.initial_xp) || EXACT_XP_LVL_680);
           setNewXpGained(Number(data.new_xp_gained) || 0);
           setHistory(data.history || []);
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
-      } font-mono {
+      } finally {
         setIsLoaded(true);
       }
     }
 
     loadDataFromSupabase();
-  }, [XP_BASE_LVL_680]);
+  }, [EXACT_XP_LVL_680]);
 
   const saveDataToSupabase = async (
     newLoot: number,
@@ -227,7 +227,7 @@ export default function Home() {
     const updatedSupplies = supplies + suppliesValue;
     const updatedBalance = balance + balanceValue;
     const updatedXpGainedTotal = totalXpGained + xpValue;
-    const updatedNewXp = newXpGained + xpValue; // Somente hunts enviadas a partir de agora
+    const updatedNewXp = newXpGained + xpValue;
     const updatedHunts = hunts + 1;
 
     const newHunt: Hunt = {
@@ -469,7 +469,7 @@ export default function Home() {
             value={initialXp}
             onChange={(e) => handleInitialXpChange(Number(e.target.value))}
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono"
-            placeholder="Ex: 5048181800"
+            placeholder="Ex: 5205701732"
           />
         </div>
 
