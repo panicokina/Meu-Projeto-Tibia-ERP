@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -232,7 +233,7 @@ export default function Home() {
 
     const newHunt: Hunt = {
       id: Date.now(),
-      date: new Date().toLocaleString("pt-BR"),
+      date: new Date().toLocaleDateString("pt-BR", { day: '2-digit', month: '2-digit' }) + " " + new Date().toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
       loot: lootValue,
       supplies: suppliesValue,
       balance: balanceValue,
@@ -335,6 +336,13 @@ export default function Home() {
   };
 
   const progressGoal = Math.min((tibiaCoins / 5000) * 100, 100);
+
+  // Prepara os dados para o Recharts (invertendo para mostrar da mais antiga para a mais recente no gráfico)
+  const chartData = [...history].reverse().map(h => ({
+    date: h.date,
+    xp: Number(((h.xp || 0) / 1_000_000).toFixed(2)), // em milhões (kk)
+    loot: Number((h.loot / 1_000).toFixed(1)) // em k
+  }));
 
   return (
     <div className="min-h-screen bg-[#0B1020] text-white">
@@ -499,7 +507,7 @@ export default function Home() {
             type="number"
             value={tcPrice}
             onChange={(e) => handleTcPriceChange(Number(e.target.value))}
-            className="w-[#100%] bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
+            className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
           />
         </div>
 
@@ -534,6 +542,37 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        {/* GRÁFICO DE EVOLUÇÃO DE XP POR HUNT */}
+        {history.length > 0 && (
+          <div className="mt-6 bg-[#151B31] p-6 rounded-xl border border-yellow-500/20 shadow-lg">
+            <div className="flex items-center gap-2 mb-4">
+              <img src={REALITY_REAVER_ICON} alt="XP Chart" className="w-5 h-5 object-contain" />
+              <h2 className="text-xl font-bold text-yellow-400">Evolução de XP por Sessão (kk)</h2>
+            </div>
+            <div className="w-full h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorXp" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#252c4a" />
+                  <XAxis dataKey="date" stroke="#9ca3af" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#9ca3af" tick={{ fontSize: 12 }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0B1020', borderColor: '#374151', borderRadius: '8px', color: '#fff' }}
+                    itemStyle={{ color: '#38bdf8' }}
+                    formatter={(value: any) => [`${value}kk`, 'XP Ganha']}
+                  />
+                  <Area type="monotone" dataKey="xp" name="XP (kk)" stroke="#38bdf8" fillOpacity={1} fill="url(#colorXp)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {/* HISTÓRICO DE HUNTS */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
