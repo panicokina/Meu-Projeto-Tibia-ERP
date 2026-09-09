@@ -17,6 +17,37 @@ interface Hunt {
   xp: number;
 }
 
+// FÓRMULA OFICIAL DE XP TOTAL DO TIBIA
+function getXpTotal(level: number): number {
+  if (level <= 1) return 0;
+  return Math.round((50 / 3) * (Math.pow(level, 3) - 6 * Math.pow(level, 2) + 17 * level - 12));
+}
+
+// CALCULA LEVEL E PROGRESSO COM BASE NA XP TOTAL ACUMULADA
+function calcularNivelEProgresso(xpTotalAcumulada: number) {
+  let level = 1;
+
+  while (xpTotalAcumulada >= getXpTotal(level + 1)) {
+    level++;
+  }
+
+  const xpInicioNivel = getXpTotal(level);
+  const xpFimNivel = getXpTotal(level + 1);
+
+  const xpNecessariaNoNivel = xpFimNivel - xpInicioNivel;
+  const xpProgressoNoNivel = xpTotalAcumulada - xpInicioNivel;
+  const xpFaltante = xpFimNivel - xpTotalAcumulada;
+
+  const porcentagem = Number(((xpProgressoNoNivel / xpNecessariaNoNivel) * 100).toFixed(2));
+
+  return {
+    level,
+    xpFaltante,
+    porcentagem: Math.min(Math.max(porcentagem, 0), 100),
+    xpFimNivel,
+  };
+}
+
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina";
   const OUTFIT_IMAGE_URL = "/greey-kina.png";
@@ -32,8 +63,10 @@ export default function Home() {
     name: CHARACTER_NAME,
     vocation: "Elite Knight",
     world: "Inabra",
-    level: 677,
   });
+
+  // XP BASE QUE O JOGADOR CADASTRA/INICIA
+  const [initialXp, setInitialXp] = useState<number>(5205661792); // Ex: 5.205.661.792 (Lvl 680)
 
   const [analyzer, setAnalyzer] = useState("");
   const [tcPrice, setTcPrice] = useState(42500);
@@ -58,31 +91,9 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // BUSCA LEVEL REALTIME NA API DO TIBIA
-  useEffect(() => {
-    async function fetchTibiaCharacter() {
-      try {
-        const response = await fetch(
-          `https://api.tibiadata.com/v4/character/${encodeURIComponent(CHARACTER_NAME)}`
-        );
-        const data = await response.json();
-        const character = data?.character?.character;
-
-        if (character) {
-          setCharData({
-            name: character.name || CHARACTER_NAME,
-            vocation: character.vocation || "Elite Knight",
-            world: character.world || "Inabra",
-            level: character.level || 677,
-          });
-        }
-      } catch (err) {
-        console.error("Erro ao buscar dados da API do Tibia:", err);
-      }
-    }
-
-    fetchTibiaCharacter();
-  }, []);
+  // CÁLCULO EM TEMPO REAL DA XP TOTAL E NIVEL DO PERSONAGEM
+  const xpTotalPersonagem = initialXp + totalXpGained;
+  const { level: currentLevel, xpFaltante, porcentagem: xpPercentage } = calcularNivelEProgresso(xpTotalPersonagem);
 
   useEffect(() => {
     async function loadDataFromSupabase() {
@@ -105,6 +116,7 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
+          setInitialXp(Number(data.initial_xp) || 5205661792);
           setHistory(data.history || []);
         }
       } catch (err) {
@@ -124,7 +136,8 @@ export default function Home() {
     newHunts: number,
     newTcPrice: number,
     newXpGained: number,
-    newHistory: Hunt[]
+    newHistory: Hunt[],
+    newInitialXp: number = initialXp
   ) => {
     if (!supabaseUrl || !supabaseAnonKey) return;
 
@@ -138,12 +151,18 @@ export default function Home() {
         tibia_coins: newTcPrice > 0 ? newBalance / newTcPrice : 0,
         tc_price: newTcPrice,
         total_xp: newXpGained,
+        initial_xp: newInitialXp,
         history: newHistory,
         updated_at: new Date().toISOString(),
       });
     } catch (err) {
       console.error("Erro ao salvar no Supabase:", err);
     }
+  };
+
+  const handleInitialXpChange = (val: number) => {
+    setInitialXp(val);
+    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, val);
   };
 
   function importHunt() {
@@ -232,7 +251,8 @@ export default function Home() {
       updatedHunts,
       tcPrice,
       updatedXpGained,
-      updatedHistory
+      updatedHistory,
+      initialXp
     );
   }
 
@@ -257,7 +277,7 @@ export default function Home() {
         setHunts(0);
         setTotalXpGained(0);
         setHistory([]);
-        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, []);
+        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], initialXp);
         alert("Todos os dados foram apagados com sucesso!");
       } else if (actionToConfirm === "deleteHunt" && huntToDelete) {
         const updatedHistory = history.filter((h) => h.id !== huntToDelete.id);
@@ -281,7 +301,8 @@ export default function Home() {
           updatedHunts,
           tcPrice,
           updatedXpGained,
-          updatedHistory
+          updatedHistory,
+          initialXp
         );
         alert("Hunt removida com sucesso!");
       }
@@ -298,7 +319,7 @@ export default function Home() {
 
   const handleTcPriceChange = (val: number) => {
     setTcPrice(val);
-    saveDataToSupabase(loot, supplies, balance, hunts, val, totalXpGained, history);
+    saveDataToSupabase(loot, supplies, balance, hunts, val, totalXpGained, history, initialXp);
   };
 
   const progressGoal = Math.min((tibiaCoins / 5000) * 100, 100);
@@ -312,7 +333,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL COM LEVEL DA API */}
+          {/* CARD DE PERFIL COM LEVEL EM TEMPO REAL E BARRA DE XP */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -330,12 +351,34 @@ export default function Home() {
                 />
               </div>
 
-              {/* DADOS DE LEVEL LIMPOS DA API */}
-              <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+              {/* LEVEL CALCULADO LOCALMENTE */}
+              <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-gray-300">Level Atual</span>
                 <span className="text-2xl font-bold text-yellow-400 font-mono">
-                  {charData.level}
+                  {currentLevel}
                 </span>
+              </div>
+
+              {/* BARRA DE PROGRESSO DE XP */}
+              <div className="bg-[#0B1020] p-3 rounded-lg border border-slate-800 space-y-2">
+                <div className="flex justify-between items-center text-xs text-gray-300">
+                  <span>Próximo Level ({currentLevel + 1})</span>
+                  <span className="font-mono text-emerald-400">
+                    -{xpFaltante.toLocaleString("pt-BR")} XP
+                  </span>
+                </div>
+
+                <div className="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-700">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-cyan-400 h-full transition-all duration-500"
+                    style={{ width: `${xpPercentage}%` }}
+                  />
+                </div>
+
+                <div className="flex justify-between text-[10px] text-gray-400 font-mono">
+                  <span>{xpPercentage}%</span>
+                  <span>XP Total: {xpTotalPersonagem.toLocaleString("pt-BR")}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -400,6 +443,24 @@ export default function Home() {
 
         </div>
 
+        {/* CONFIGURAÇÃO DE XP INICIAL DO PERSONAGEM */}
+        <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
+          <div className="flex items-center gap-2 mb-2">
+            <img src={REALITY_REAVER_ICON} alt="XP Base" className="w-5 h-5 object-contain" />
+            <h2 className="font-semibold">XP Inicial Base do Personagem</h2>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            Insira a XP total que o seu char possuía antes de começar a registrar as hunts no dashboard.
+          </p>
+          <input
+            type="number"
+            value={initialXp}
+            onChange={(e) => handleInitialXpChange(Number(e.target.value))}
+            className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono"
+            placeholder="Ex: 5205661792"
+          />
+        </div>
+
         {/* META TC */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
           <div className="flex items-center gap-2 mb-2">
@@ -439,7 +500,7 @@ export default function Home() {
               setAnalyzer(e.target.value);
               if (errorMessage) setErrorMessage("");
             }}
-            className="w-full h-64 bg-[#0B1020] p-4 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
+            className="w-full h-64 bg-[#0B1020] p-4 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono text-sm"
             placeholder="Cole aqui o Hunt Analyzer do Tibia..."
           />
           {errorMessage && (
