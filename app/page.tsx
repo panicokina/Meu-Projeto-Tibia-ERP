@@ -65,8 +65,9 @@ export default function Home() {
     world: "Inabra",
   });
 
-  // XP BASE DO PERSONAGEM (Padrão 5198180433 conforme seu input)
-  const [initialXp, setInitialXp] = useState<number>(5198180433);
+  // XP BASE DO PERSONAGEM
+  const DEFAULT_INITIAL_XP = 5198180433;
+  const [initialXp, setInitialXp] = useState<number>(DEFAULT_INITIAL_XP);
   const [newXpGained, setNewXpGained] = useState<number>(0);
 
   const [analyzer, setAnalyzer] = useState("");
@@ -81,7 +82,7 @@ export default function Home() {
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Modal de Autenticação
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -117,9 +118,13 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
-          if (data.initial_xp !== undefined && data.initial_xp !== null) {
+          
+          if (data.initial_xp !== undefined && data.initial_xp !== null && data.initial_xp !== 0) {
             setInitialXp(Number(data.initial_xp));
+          } else {
+            setInitialXp(DEFAULT_INITIAL_XP);
           }
+
           setNewXpGained(Number(data.new_xp_gained) || 0);
           setHistory(data.history || []);
         }
@@ -141,8 +146,8 @@ export default function Home() {
     newTcPrice: number,
     newXpGainedTotal: number,
     newHistory: Hunt[],
-    newInitialXp: number = initialXp,
-    newXpFromToday: number = newXpGained
+    newInitialXp: number,
+    newXpFromToday: number
   ) => {
     if (!supabaseUrl || !supabaseAnonKey) return;
 
@@ -336,6 +341,14 @@ export default function Home() {
   };
 
   const progressGoal = Math.min((tibiaCoins / 5000) * 100, 100);
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-[#0B1020] text-white flex items-center justify-center font-semibold">
+        Carregando Dashboard...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0B1020] text-white">
