@@ -65,9 +65,8 @@ export default function Home() {
     world: "Inabra",
   });
 
-  // VALORES EXATOS DA SUA TELA:
-  // Level: 680 | XP Total: 5.207.605.385
-  const EXACT_CURRENT_XP = 5207605385;
+  // XP CORRETA DO PERSONAGEM (5.198.180.433)
+  const EXACT_CURRENT_XP = 5198180433;
   const [initialXp, setInitialXp] = useState<number>(EXACT_CURRENT_XP);
   const [newXpGained, setNewXpGained] = useState<number>(0);
 
@@ -94,7 +93,7 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // CÁLCULO DIRETO COM BASE NA SUA XP DA FOTO + PROXIMAS HUNTS
+  // CÁLCULO BASEADO NA XP CORRETA (5.198.180.433) + HUNTS NOVAS
   const xpTotalPersonagem = Number(initialXp) + Number(newXpGained);
   const { level: currentLevel, xpFaltante, porcentagem: xpPercentage } = calcularNivelEProgresso(xpTotalPersonagem);
 
@@ -131,7 +130,7 @@ export default function Home() {
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
-      } font-medium {
+      } finally {
         setIsLoaded(true);
       }
     }
@@ -387,7 +386,7 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* BARRA DE PROGRESSO DE XP (EXATAMENTE -9.898.615 XP | 57%) */}
+              {/* BARRA DE PROGRESSO DE XP */}
               <div className="bg-[#0B1020] p-3 rounded-lg border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center text-xs text-gray-300">
                   <span>Próximo Level ({currentLevel + 1})</span>
@@ -475,17 +474,17 @@ export default function Home() {
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
           <div className="flex items-center gap-2 mb-2">
             <img src={REALITY_REAVER_ICON} alt="XP Base" className="w-5 h-5 object-contain" />
-            <h2 className="font-semibold">XP Base Inicial do Personagem (Sem somar com histórico antigo)</h2>
+            <h2 className="font-semibold">XP Base Inicial do Personagem</h2>
           </div>
           <p className="text-xs text-gray-400 mb-3">
-            Defina a XP com a qual o char começa. As hunts antigas não serão somadas nesta XP.
+            Defina a XP atual do char. As próximas hunts somarão a partir daqui.
           </p>
           <input
             type="number"
             value={initialXp}
             onChange={(e) => handleInitialXpChange(Number(e.target.value))}
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono"
-            placeholder="Ex: 5207605385"
+            placeholder="Ex: 5198180433"
           />
         </div>
 
