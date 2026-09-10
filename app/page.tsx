@@ -65,7 +65,7 @@ export default function Home() {
     world: "Inabra",
   });
 
-  // XP CORRETA DO PERSONAGEM (5.198.180.433)
+  // XP CORRETA DO PERSONAGEM
   const EXACT_CURRENT_XP = 5198180433;
   const [initialXp, setInitialXp] = useState<number>(EXACT_CURRENT_XP);
   const [newXpGained, setNewXpGained] = useState<number>(0);
@@ -119,11 +119,8 @@ export default function Home() {
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
           
-          if (data.initial_xp) {
-            setInitialXp(Number(data.initial_xp));
-          } else {
-            setInitialXp(EXACT_CURRENT_XP);
-          }
+          // Força o valor correto de 5198180433
+          setInitialXp(EXACT_CURRENT_XP);
 
           setNewXpGained(Number(data.new_xp_gained) || 0);
           setHistory(data.history || []);
