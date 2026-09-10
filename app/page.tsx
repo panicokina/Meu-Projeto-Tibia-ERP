@@ -124,7 +124,7 @@ export default function Home() {
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
-      } finally {
+      } font-mono
         setIsLoaded(true);
       }
     }
