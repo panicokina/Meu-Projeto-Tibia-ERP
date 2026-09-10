@@ -59,15 +59,14 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  const [charData, setCharData] = useState({
+  const [charData] = useState({
     name: CHARACTER_NAME,
     vocation: "Elite Knight",
     world: "Inabra",
   });
 
-  // XP ATUAL DO SEU LEVEL 680
-  const EXACT_XP_LVL_680 = 5205701732;
-  const [initialXp, setInitialXp] = useState<number>(EXACT_XP_LVL_680);
+  // XP BASE DO PERSONAGEM (Padrão 5198180433 conforme seu input)
+  const [initialXp, setInitialXp] = useState<number>(5198180433);
   const [newXpGained, setNewXpGained] = useState<number>(0);
 
   const [analyzer, setAnalyzer] = useState("");
@@ -82,7 +81,7 @@ export default function Home() {
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [, setIsLoaded] = useState(false);
 
   // Modal de Autenticação
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -93,8 +92,8 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // XP TOTAL PARA O CÁLCULO = BASE DO CHAR + HUNTS NOVAS
-  const xpTotalPersonagem = initialXp + newXpGained;
+  // XP TOTAL CALCULADA EM TEMPO REAL
+  const xpTotalPersonagem = Number(initialXp) + Number(newXpGained);
   const { level: currentLevel, xpFaltante, porcentagem: xpPercentage } = calcularNivelEProgresso(xpTotalPersonagem);
 
   useEffect(() => {
@@ -118,19 +117,21 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
-          setInitialXp(Number(data.initial_xp) || EXACT_XP_LVL_680);
+          if (data.initial_xp !== undefined && data.initial_xp !== null) {
+            setInitialXp(Number(data.initial_xp));
+          }
           setNewXpGained(Number(data.new_xp_gained) || 0);
           setHistory(data.history || []);
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
-      } font-mono
+      } finally {
         setIsLoaded(true);
       }
     }
 
     loadDataFromSupabase();
-  }, [EXACT_XP_LVL_680]);
+  }, []);
 
   const saveDataToSupabase = async (
     newLoot: number,
@@ -469,7 +470,7 @@ export default function Home() {
             value={initialXp}
             onChange={(e) => handleInitialXpChange(Number(e.target.value))}
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono"
-            placeholder="Ex: 5205701732"
+            placeholder="Ex: 5198180433"
           />
         </div>
 
