@@ -23,7 +23,7 @@ function getXpTotal(level: number): number {
   return Math.round((50 / 3) * (Math.pow(level, 3) - 6 * Math.pow(level, 2) + 17 * level - 12));
 }
 
-// CALCULA LEVEL E PROGRESSO COM BASE NA XP TOTAL
+// CALCULA PROGRESSO E LEVEL EXATOS A PARTIR DA XP
 function calcularNivelEProgresso(xpTotalAcumulada: number) {
   let level = 1;
 
@@ -38,7 +38,7 @@ function calcularNivelEProgresso(xpTotalAcumulada: number) {
   const xpProgressoNoNivel = xpTotalAcumulada - xpInicioNivel;
   const xpFaltante = xpFimNivel - xpTotalAcumulada;
 
-  const porcentagem = Number(((xpProgressoNoNivel / xpNecessariaNoNivel) * 100).toFixed(2));
+  const porcentagem = Math.floor((xpProgressoNoNivel / xpNecessariaNoNivel) * 100);
 
   return {
     level,
@@ -65,9 +65,10 @@ export default function Home() {
     world: "Inabra",
   });
 
-  // XP BASE DO PERSONAGEM
-  const DEFAULT_INITIAL_XP = 5198180433;
-  const [initialXp, setInitialXp] = useState<number>(DEFAULT_INITIAL_XP);
+  // VALORES EXATOS DA SUA TELA:
+  // Level: 680 | XP Total: 5.207.605.385
+  const EXACT_CURRENT_XP = 5207605385;
+  const [initialXp, setInitialXp] = useState<number>(EXACT_CURRENT_XP);
   const [newXpGained, setNewXpGained] = useState<number>(0);
 
   const [analyzer, setAnalyzer] = useState("");
@@ -93,7 +94,7 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // XP TOTAL CALCULADA EM TEMPO REAL
+  // CÁLCULO DIRETO COM BASE NA SUA XP DA FOTO + PROXIMAS HUNTS
   const xpTotalPersonagem = Number(initialXp) + Number(newXpGained);
   const { level: currentLevel, xpFaltante, porcentagem: xpPercentage } = calcularNivelEProgresso(xpTotalPersonagem);
 
@@ -119,10 +120,10 @@ export default function Home() {
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
           
-          if (data.initial_xp !== undefined && data.initial_xp !== null && data.initial_xp !== 0) {
+          if (data.initial_xp) {
             setInitialXp(Number(data.initial_xp));
           } else {
-            setInitialXp(DEFAULT_INITIAL_XP);
+            setInitialXp(EXACT_CURRENT_XP);
           }
 
           setNewXpGained(Number(data.new_xp_gained) || 0);
@@ -130,7 +131,7 @@ export default function Home() {
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
-      } finally {
+      } font-medium {
         setIsLoaded(true);
       }
     }
@@ -173,7 +174,8 @@ export default function Home() {
 
   const handleInitialXpChange = (val: number) => {
     setInitialXp(val);
-    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, val, newXpGained);
+    setNewXpGained(0);
+    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, val, 0);
   };
 
   function importHunt() {
@@ -359,7 +361,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL COM LEVEL EM TEMPO REAL E BARRA DE XP */}
+          {/* CARD DE PERFIL */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -377,7 +379,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL CALCULADO */}
+              {/* LEVEL ATUAL (680) */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-gray-300">Level Atual</span>
                 <span className="text-2xl font-bold text-yellow-400 font-mono">
@@ -385,7 +387,7 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* BARRA DE PROGRESSO DE XP */}
+              {/* BARRA DE PROGRESSO DE XP (EXATAMENTE -9.898.615 XP | 57%) */}
               <div className="bg-[#0B1020] p-3 rounded-lg border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center text-xs text-gray-300">
                   <span>Próximo Level ({currentLevel + 1})</span>
@@ -469,7 +471,7 @@ export default function Home() {
 
         </div>
 
-        {/* CONFIGURAÇÃO DE XP INICIAL DO PERSONAGEM */}
+        {/* CONFIGURAÇÃO DE XP ATUAL DO PERSONAGEM */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
           <div className="flex items-center gap-2 mb-2">
             <img src={REALITY_REAVER_ICON} alt="XP Base" className="w-5 h-5 object-contain" />
@@ -483,7 +485,7 @@ export default function Home() {
             value={initialXp}
             onChange={(e) => handleInitialXpChange(Number(e.target.value))}
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono"
-            placeholder="Ex: 5198180433"
+            placeholder="Ex: 5207605385"
           />
         </div>
 
