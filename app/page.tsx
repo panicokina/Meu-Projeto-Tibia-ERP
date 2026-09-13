@@ -66,7 +66,7 @@ export default function Home() {
   });
 
   // XP CORRETA DO PERSONAGEM
-  const EXACT_CURRENT_XP = 5198180433;
+  const EXACT_CURRENT_XP = 5220503554;
   const [initialXp, setInitialXp] = useState<number>(EXACT_CURRENT_XP);
   const [newXpGained, setNewXpGained] = useState<number>(0);
 
