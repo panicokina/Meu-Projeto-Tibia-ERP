@@ -23,7 +23,7 @@ function getXpTotal(level: number): number {
   return Math.round((50 / 3) * (Math.pow(level, 3) - 6 * Math.pow(level, 2) + 17 * level - 12));
 }
 
-// CALCULA PROGRESSO E LEVEL EXATOS A PARTIR DA XP
+// CALCULA PROGRESSO E LEVEL EXATOS A PARTIR DA XP TOTAL ACUMULADA
 function calcularNivelEProgresso(xpTotalAcumulada: number) {
   let level = 1;
 
@@ -38,12 +38,14 @@ function calcularNivelEProgresso(xpTotalAcumulada: number) {
   const xpProgressoNoNivel = xpTotalAcumulada - xpInicioNivel;
   const xpFaltante = xpFimNivel - xpTotalAcumulada;
 
-  const porcentagem = Math.floor((xpProgressoNoNivel / xpNecessariaNoNivel) * 100);
+  // Calcula a porcentagem com precisão de 1 casa decimal
+  const porcentagemVal = (xpProgressoNoNivel / xpNecessariaNoNivel) * 100;
+  const porcentagem = parseFloat(Math.min(Math.max(porcentagemVal, 0), 100).toFixed(1));
 
   return {
     level,
     xpFaltante,
-    porcentagem: Math.min(Math.max(porcentagem, 0), 100),
+    porcentagem,
     xpFimNivel,
   };
 }
@@ -65,8 +67,8 @@ export default function Home() {
     world: "Inabra",
   });
 
-  // XP CORRETA DO PERSONAGEM
-  const EXACT_CURRENT_XP = 5220503554;
+  // XP BASE INICIAL DO PERSONAGEM (5.228.838.172)
+  const EXACT_CURRENT_XP = 5228838172;
   const [initialXp, setInitialXp] = useState<number>(EXACT_CURRENT_XP);
   const [newXpGained, setNewXpGained] = useState<number>(0);
 
@@ -93,7 +95,7 @@ export default function Home() {
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
 
-  // CÁLCULO BASEADO NA XP CORRETA (5.198.180.433) + HUNTS NOVAS
+  // CÁLCULO BASEADO NA XP INICIAL + HUNTS ADICIONADAS
   const xpTotalPersonagem = Number(initialXp) + Number(newXpGained);
   const { level: currentLevel, xpFaltante, porcentagem: xpPercentage } = calcularNivelEProgresso(xpTotalPersonagem);
 
@@ -119,8 +121,8 @@ export default function Home() {
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
           
-          // Força o valor correto de 5198180433
-          setInitialXp(EXACT_CURRENT_XP);
+          // Carrega a XP inicial salva no banco ou usa o valor padrão
+          setInitialXp(data.initial_xp !== undefined ? Number(data.initial_xp) : EXACT_CURRENT_XP);
 
           setNewXpGained(Number(data.new_xp_gained) || 0);
           setHistory(data.history || []);
@@ -170,8 +172,7 @@ export default function Home() {
 
   const handleInitialXpChange = (val: number) => {
     setInitialXp(val);
-    setNewXpGained(0);
-    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, val, 0);
+    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, val, newXpGained);
   };
 
   function importHunt() {
@@ -375,7 +376,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL ATUAL (680) */}
+              {/* LEVEL ATUAL */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-gray-300">Level Atual</span>
                 <span className="text-2xl font-bold text-yellow-400 font-mono">
@@ -481,7 +482,7 @@ export default function Home() {
             value={initialXp}
             onChange={(e) => handleInitialXpChange(Number(e.target.value))}
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono"
-            placeholder="Ex: 5198180433"
+            placeholder="Ex: 5228838172"
           />
         </div>
 
@@ -511,7 +512,7 @@ export default function Home() {
             type="number"
             value={tcPrice}
             onChange={(e) => handleTcPriceChange(Number(e.target.value))}
-            className="w-[#100%] bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
+            className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
           />
         </div>
 
