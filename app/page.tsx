@@ -94,9 +94,8 @@ export default function Home() {
   const [huntToDelete, setHuntToDelete] = useState<Hunt | null>(null);
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
-
-  // CONVERSÃO PARA REAIS (A CADA 250 TC = R$ 47,00)
-  const valorEmReais = (tibiaCoins / 250) * 47;
+  // Cotação: 250 TC = R$ 50 -> R$ 0.20 por TC
+  const realMoney = tibiaCoins * (50 / 250);
 
   // CÁLCULO BASEADO NA XP INICIAL + HUNTS ADICIONADAS
   const xpTotalPersonagem = Number(initialXp) + Number(newXpGained);
@@ -132,7 +131,7 @@ export default function Home() {
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
-      } font-semibold
+      } font-mono {
         setIsLoaded(true);
       }
     }
@@ -424,25 +423,16 @@ export default function Home() {
               </div>
             </div>
 
+            {/* CARD TIBIA COINS COM VALOR EM REAIS */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Tibia Coins</h2>
               <div className="flex items-center gap-2">
                 <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-6 h-6 object-contain" />
                 <p className="text-xl font-bold text-yellow-400">{tibiaCoins.toFixed(1)} TC</p>
               </div>
-            </div>
-
-            {/* CARD NOVO: VALOR EM REAIS */}
-            <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center border border-emerald-500/20">
-              <h2 className="text-gray-400 text-sm mb-1">Valor em Reais (R$)</h2>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 font-bold text-xs border border-emerald-500/40">
-                  R$
-                </div>
-                <p className="text-xl font-bold text-emerald-400 font-mono">
-                  {valorEmReais.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                </p>
-              </div>
+              <p className="text-xs text-emerald-400 font-semibold mt-1">
+                ≈ R$ {realMoney.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
             </div>
 
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
