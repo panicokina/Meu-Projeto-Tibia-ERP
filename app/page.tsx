@@ -17,38 +17,6 @@ interface Hunt {
   xp: number;
 }
 
-// FÓRMULA OFICIAL DE XP TOTAL DO TIBIA
-function getXpTotal(level: number): number {
-  if (level <= 1) return 0;
-  return Math.round((50 / 3) * (Math.pow(level, 3) - 6 * Math.pow(level, 2) + 17 * level - 12));
-}
-
-// CALCULA PROGRESSO E LEVEL EXATOS A PARTIR DA XP TOTAL ACUMULADA
-function calcularNivelEProgresso(xpTotalAcumulada: number) {
-  let level = 1;
-
-  while (xpTotalAcumulada >= getXpTotal(level + 1)) {
-    level++;
-  }
-
-  const xpInicioNivel = getXpTotal(level);
-  const xpFimNivel = getXpTotal(level + 1);
-
-  const xpNecessariaNoNivel = xpFimNivel - xpInicioNivel;
-  const xpProgressoNoNivel = xpTotalAcumulada - xpInicioNivel;
-  const xpFaltante = xpFimNivel - xpTotalAcumulada;
-
-  const porcentagemVal = (xpProgressoNoNivel / xpNecessariaNoNivel) * 100;
-  const porcentagem = parseFloat(Math.min(Math.max(porcentagemVal, 0), 100).toFixed(1));
-
-  return {
-    level,
-    xpFaltante,
-    porcentagem,
-    xpFimNivel,
-  };
-}
-
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina";
   const OUTFIT_IMAGE_URL = "/greey-kina.png";
@@ -66,9 +34,9 @@ export default function Home() {
     world: "Inabra",
   });
 
-  const EXACT_CURRENT_XP = 5228838172;
-  const [initialXp, setInitialXp] = useState<number>(EXACT_CURRENT_XP);
-  const [newXpGained, setNewXpGained] = useState<number>(0);
+  // ESTADOS MANUAIS DE LEVEL E PROGRESSO DE XP
+  const [currentLevel, setCurrentLevel] = useState<number>(682);
+  const [manualPercentage, setManualPercentage] = useState<number>(64.55);
 
   const [analyzer, setAnalyzer] = useState("");
   const [tcPrice, setTcPrice] = useState(42500);
@@ -103,9 +71,6 @@ export default function Home() {
   // Cotação: 250 TC = R$ 50 -> R$ 0.20 por TC
   const realMoney = tibiaCoins * (50 / 250);
 
-  const xpTotalPersonagem = Number(initialXp) + Number(newXpGained);
-  const { level: currentLevel, xpFaltante, porcentagem: xpPercentage } = calcularNivelEProgresso(xpTotalPersonagem);
-
   useEffect(() => {
     async function loadDataFromSupabase() {
       if (!supabaseUrl || !supabaseAnonKey) {
@@ -127,8 +92,8 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
-          setInitialXp(data.initial_xp !== undefined ? Number(data.initial_xp) : EXACT_CURRENT_XP);
-          setNewXpGained(Number(data.new_xp_gained) || 0);
+          setCurrentLevel(Number(data.current_level) || 682);
+          setManualPercentage(Number(data.manual_percentage) ?? 64.55);
           setHistory(data.history || []);
           setSoldTcTotal(Number(data.sold_tc_total) || 0);
           setSoldBrlTotal(Number(data.sold_brl_total) || 0);
@@ -151,8 +116,8 @@ export default function Home() {
     newTcPrice: number,
     newXpGainedTotal: number,
     newHistory: Hunt[],
-    newInitialXp: number,
-    newXpFromToday: number,
+    newLevel: number = currentLevel,
+    newPercentage: number = manualPercentage,
     newSoldTcTotal: number = soldTcTotal,
     newSoldBrlTotal: number = soldBrlTotal
   ) => {
@@ -168,8 +133,8 @@ export default function Home() {
         tibia_coins: newTcPrice > 0 ? newBalance / newTcPrice : 0,
         tc_price: newTcPrice,
         total_xp: newXpGainedTotal,
-        initial_xp: newInitialXp,
-        new_xp_gained: newXpFromToday,
+        current_level: newLevel,
+        manual_percentage: newPercentage,
         history: newHistory,
         sold_tc_total: newSoldTcTotal,
         sold_brl_total: newSoldBrlTotal,
@@ -180,9 +145,16 @@ export default function Home() {
     }
   };
 
-  const handleInitialXpChange = (val: number) => {
-    setInitialXp(val);
-    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, val, newXpGained);
+  const handleLevelChange = (newLvl: number) => {
+    const validLvl = Math.max(1, newLvl);
+    setCurrentLevel(validLvl);
+    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, validLvl, manualPercentage);
+  };
+
+  const handlePercentageChange = (val: number) => {
+    const validPct = Math.min(100, Math.max(0, val));
+    setManualPercentage(validPct);
+    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, currentLevel, validPct);
   };
 
   function importHunt() {
@@ -242,7 +214,6 @@ export default function Home() {
     const updatedSupplies = supplies + suppliesValue;
     const updatedBalance = balance + balanceValue;
     const updatedXpGainedTotal = totalXpGained + xpValue;
-    const updatedNewXp = newXpGained + xpValue;
     const updatedHunts = hunts + 1;
 
     const newHunt: Hunt = {
@@ -261,7 +232,6 @@ export default function Home() {
     setSupplies(updatedSupplies);
     setBalance(updatedBalance);
     setTotalXpGained(updatedXpGainedTotal);
-    setNewXpGained(updatedNewXp);
     setHunts(updatedHunts);
     setHistory(updatedHistory);
     setAnalyzer("");
@@ -274,8 +244,8 @@ export default function Home() {
       tcPrice,
       updatedXpGainedTotal,
       updatedHistory,
-      initialXp,
-      updatedNewXp
+      currentLevel,
+      manualPercentage
     );
   }
 
@@ -299,7 +269,6 @@ export default function Home() {
     setSoldTcTotal(updatedSoldTc);
     setSoldBrlTotal(updatedSoldBrl);
 
-    // Salva no banco zerando o financeiro, mantendo totalXpGained, initialXp, newXpGained e history intactos
     await saveDataToSupabase(
       0,
       0,
@@ -308,8 +277,8 @@ export default function Home() {
       tcPrice,
       totalXpGained,
       history,
-      initialXp,
-      newXpGained,
+      currentLevel,
+      manualPercentage,
       updatedSoldTc,
       updatedSoldBrl
     );
@@ -339,11 +308,10 @@ export default function Home() {
         setBalance(0);
         setHunts(0);
         setTotalXpGained(0);
-        setNewXpGained(0);
         setSoldTcTotal(0);
         setSoldBrlTotal(0);
         setHistory([]);
-        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], initialXp, 0, 0, 0);
+        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], currentLevel, manualPercentage, 0, 0);
         alert("Todos os dados foram apagados com sucesso!");
       } else if (actionToConfirm === "deleteHunt" && huntToDelete) {
         const updatedHistory = history.filter((h) => h.id !== huntToDelete.id);
@@ -351,14 +319,12 @@ export default function Home() {
         const updatedSupplies = supplies - huntToDelete.supplies;
         const updatedBalance = balance - huntToDelete.balance;
         const updatedXpGainedTotal = totalXpGained - (huntToDelete.xp || 0);
-        const updatedNewXp = Math.max(newXpGained - (huntToDelete.xp || 0), 0);
         const updatedHunts = Math.max(hunts - 1, 0);
 
         setLoot(updatedLoot);
         setSupplies(updatedSupplies);
         setBalance(updatedBalance);
         setTotalXpGained(updatedXpGainedTotal);
-        setNewXpGained(updatedNewXp);
         setHunts(updatedHunts);
         setHistory(updatedHistory);
 
@@ -370,8 +336,8 @@ export default function Home() {
           tcPrice,
           updatedXpGainedTotal,
           updatedHistory,
-          initialXp,
-          updatedNewXp
+          currentLevel,
+          manualPercentage
         );
         alert("Hunt removida com sucesso!");
       }
@@ -388,7 +354,7 @@ export default function Home() {
 
   const handleTcPriceChange = (val: number) => {
     setTcPrice(val);
-    saveDataToSupabase(loot, supplies, balance, hunts, val, totalXpGained, history, initialXp, newXpGained);
+    saveDataToSupabase(loot, supplies, balance, hunts, val, totalXpGained, history, currentLevel, manualPercentage);
   };
 
   const tcToSellNum = parseInt(tcToSellInput, 10) || 0;
@@ -411,7 +377,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL */}
+          {/* CARD DE PERFIL COM LEVEL E PROGRESSO MANUAIS */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -429,33 +395,58 @@ export default function Home() {
                 />
               </div>
 
-              {/* LEVEL ATUAL */}
+              {/* CONTROLE MANUAL DE LEVEL */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-gray-300">Level Atual</span>
-                <span className="text-2xl font-bold text-yellow-400 font-mono">
-                  {currentLevel}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleLevelChange(currentLevel - 1)}
+                    className="bg-slate-800 hover:bg-slate-700 text-yellow-400 font-bold px-2 py-0.5 rounded border border-slate-700 text-sm transition"
+                    title="Diminuir Level"
+                  >
+                    ▼
+                  </button>
+                  <span className="text-2xl font-bold text-yellow-400 font-mono min-w-[50px] text-center">
+                    {currentLevel}
+                  </span>
+                  <button
+                    onClick={() => handleLevelChange(currentLevel + 1)}
+                    className="bg-slate-800 hover:bg-slate-700 text-yellow-400 font-bold px-2 py-0.5 rounded border border-slate-700 text-sm transition"
+                    title="Aumentar Level"
+                  >
+                    ▲
+                  </button>
+                </div>
               </div>
 
-              {/* BARRA DE PROGRESSO DE XP */}
+              {/* CONTROLE MANUAL DA BARRA DE PROGRESSO DE XP */}
               <div className="bg-[#0B1020] p-3 rounded-lg border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center text-xs text-gray-300">
-                  <span>Próximo Level ({currentLevel + 1})</span>
-                  <span className="font-mono text-emerald-400">
-                    -{xpFaltante.toLocaleString("pt-BR")} XP
-                  </span>
+                  <span>Progresso do Level ({currentLevel + 1})</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={manualPercentage}
+                      onChange={(e) => handlePercentageChange(parseFloat(e.target.value) || 0)}
+                      className="w-16 bg-[#151B31] text-emerald-400 font-mono text-xs px-1 py-0.5 rounded border border-slate-700 text-right focus:outline-none focus:border-yellow-500"
+                    />
+                    <span className="text-emerald-400 font-mono">%</span>
+                  </div>
                 </div>
 
                 <div className="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-700">
                   <div
-                    className="bg-gradient-to-r from-blue-500 to-cyan-400 h-full transition-all duration-500"
-                    style={{ width: `${xpPercentage}%` }}
+                    className="bg-gradient-to-r from-blue-500 to-cyan-400 h-full transition-all duration-300"
+                    style={{ width: `${manualPercentage}%` }}
                   />
                 </div>
 
                 <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                  <span>{xpPercentage}%</span>
-                  <span>XP Total: {xpTotalPersonagem.toLocaleString("pt-BR")}</span>
+                  <span>{manualPercentage}% Concluído</span>
+                  <span>{(100 - manualPercentage).toFixed(2)}% Restante</span>
                 </div>
               </div>
             </div>
@@ -525,7 +516,7 @@ export default function Home() {
 
         </div>
 
-        {/* BOTAO / CARD VENDER TIBIA COIN E MÉTICAS DE VENDAS */}
+        {/* BOTÃO / CARD VENDER TIBIA COIN E MÉTRICAS DE VENDAS */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div 
             onClick={() => setShowSellModal(true)}
@@ -553,24 +544,6 @@ export default function Home() {
               </p>
             </div>
           </div>
-        </div>
-
-        {/* CONFIGURAÇÃO DE XP ATUAL DO PERSONAGEM */}
-        <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <img src={REALITY_REAVER_ICON} alt="XP Base" className="w-5 h-5 object-contain" />
-            <h2 className="font-semibold">XP Base Inicial do Personagem</h2>
-          </div>
-          <p className="text-xs text-gray-400 mb-3">
-            Defina a XP atual do char. As próximas hunts somarão a partir daqui.
-          </p>
-          <input
-            type="number"
-            value={initialXp}
-            onChange={(e) => handleInitialXpChange(Number(e.target.value))}
-            className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono"
-            placeholder="Ex: 5228838172"
-          />
         </div>
 
         {/* PREÇO TC */}
