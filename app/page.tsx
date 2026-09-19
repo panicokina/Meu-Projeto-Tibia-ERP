@@ -38,7 +38,6 @@ function calcularNivelEProgresso(xpTotalAcumulada: number) {
   const xpProgressoNoNivel = xpTotalAcumulada - xpInicioNivel;
   const xpFaltante = xpFimNivel - xpTotalAcumulada;
 
-  // Calcula a porcentagem com precisão de 1 casa decimal
   const porcentagemVal = (xpProgressoNoNivel / xpNecessariaNoNivel) * 100;
   const porcentagem = parseFloat(Math.min(Math.max(porcentagemVal, 0), 100).toFixed(1));
 
@@ -67,7 +66,6 @@ export default function Home() {
     world: "Inabra",
   });
 
-  // XP BASE INICIAL DO PERSONAGEM (5.228.838.172)
   const EXACT_CURRENT_XP = 5228838172;
   const [initialXp, setInitialXp] = useState<number>(EXACT_CURRENT_XP);
   const [newXpGained, setNewXpGained] = useState<number>(0);
@@ -81,12 +79,20 @@ export default function Home() {
   const [hunts, setHunts] = useState(0);
   const [totalXpGained, setTotalXpGained] = useState(0);
 
+  // Vendas acumuladas de Tibia Coins
+  const [soldTcTotal, setSoldTcTotal] = useState(0);
+  const [soldBrlTotal, setSoldBrlTotal] = useState(0);
+
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Modal de Autenticação
+  // Modal Vender Tibia Coin
+  const [showSellModal, setShowSellModal] = useState(false);
+  const [tcToSellInput, setTcToSellInput] = useState("");
+
+  // Modal de Autenticação para exclusões
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authUsername, setAuthUsername] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -97,7 +103,6 @@ export default function Home() {
   // Cotação: 250 TC = R$ 50 -> R$ 0.20 por TC
   const realMoney = tibiaCoins * (50 / 250);
 
-  // CÁLCULO BASEADO NA XP INICIAL + HUNTS ADICIONADAS
   const xpTotalPersonagem = Number(initialXp) + Number(newXpGained);
   const { level: currentLevel, xpFaltante, porcentagem: xpPercentage } = calcularNivelEProgresso(xpTotalPersonagem);
 
@@ -122,16 +127,15 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
-          
-          // Carrega a XP inicial salva no banco ou usa o valor padrão
           setInitialXp(data.initial_xp !== undefined ? Number(data.initial_xp) : EXACT_CURRENT_XP);
-
           setNewXpGained(Number(data.new_xp_gained) || 0);
           setHistory(data.history || []);
+          setSoldTcTotal(Number(data.sold_tc_total) || 0);
+          setSoldBrlTotal(Number(data.sold_brl_total) || 0);
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
-      } font-semibold
+      } finally {
         setIsLoaded(true);
       }
     }
@@ -148,7 +152,9 @@ export default function Home() {
     newXpGainedTotal: number,
     newHistory: Hunt[],
     newInitialXp: number,
-    newXpFromToday: number
+    newXpFromToday: number,
+    newSoldTcTotal: number = soldTcTotal,
+    newSoldBrlTotal: number = soldBrlTotal
   ) => {
     if (!supabaseUrl || !supabaseAnonKey) return;
 
@@ -165,6 +171,8 @@ export default function Home() {
         initial_xp: newInitialXp,
         new_xp_gained: newXpFromToday,
         history: newHistory,
+        sold_tc_total: newSoldTcTotal,
+        sold_brl_total: newSoldBrlTotal,
         updated_at: new Date().toISOString(),
       });
     } catch (err) {
@@ -271,6 +279,46 @@ export default function Home() {
     );
   }
 
+  // AÇÃO DE VENDER TC E RESETAR SALDOS DE FINANCEIRO MANTENDO A XP
+  const confirmSellTc = async () => {
+    const tcQty = parseInt(tcToSellInput, 10);
+    if (isNaN(tcQty) || tcQty <= 0) {
+      alert("Por favor, digite uma quantidade válida de Tibia Coins.");
+      return;
+    }
+
+    const brlArrecadado = tcQty * (50 / 250);
+
+    const updatedSoldTc = soldTcTotal + tcQty;
+    const updatedSoldBrl = soldBrlTotal + brlArrecadado;
+
+    // Reseta o financeiro (Saldo, Loot e Supplies)
+    setBalance(0);
+    setLoot(0);
+    setSupplies(0);
+    setSoldTcTotal(updatedSoldTc);
+    setSoldBrlTotal(updatedSoldBrl);
+
+    // Salva no banco zerando o financeiro, mantendo totalXpGained, initialXp, newXpGained e history intactos
+    await saveDataToSupabase(
+      0,
+      0,
+      0,
+      hunts,
+      tcPrice,
+      totalXpGained,
+      history,
+      initialXp,
+      newXpGained,
+      updatedSoldTc,
+      updatedSoldBrl
+    );
+
+    setShowSellModal(false);
+    setTcToSellInput("");
+    alert(`Lançamento realizado! ${tcQty} TCs vendidas por R$ ${brlArrecadado.toFixed(2)}.`);
+  };
+
   function handleClearDataClick() {
     setActionToConfirm("clearAll");
     setHuntToDelete(null);
@@ -292,8 +340,10 @@ export default function Home() {
         setHunts(0);
         setTotalXpGained(0);
         setNewXpGained(0);
+        setSoldTcTotal(0);
+        setSoldBrlTotal(0);
         setHistory([]);
-        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], initialXp, 0);
+        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], initialXp, 0, 0, 0);
         alert("Todos os dados foram apagados com sucesso!");
       } else if (actionToConfirm === "deleteHunt" && huntToDelete) {
         const updatedHistory = history.filter((h) => h.id !== huntToDelete.id);
@@ -341,7 +391,8 @@ export default function Home() {
     saveDataToSupabase(loot, supplies, balance, hunts, val, totalXpGained, history, initialXp, newXpGained);
   };
 
-  const progressGoal = Math.min((tibiaCoins / 5000) * 100, 100);
+  const tcToSellNum = parseInt(tcToSellInput, 10) || 0;
+  const brlToReceive = tcToSellNum * (50 / 250);
 
   if (!isLoaded) {
     return (
@@ -474,6 +525,36 @@ export default function Home() {
 
         </div>
 
+        {/* BOTAO / CARD VENDER TIBIA COIN E MÉTICAS DE VENDAS */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div 
+            onClick={() => setShowSellModal(true)}
+            className="bg-[#151B31] hover:bg-[#1c2440] p-6 rounded-xl border border-yellow-500/40 cursor-pointer transition flex items-center justify-between group shadow-lg"
+          >
+            <div className="flex items-center gap-4">
+              <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-10 h-10 object-contain group-hover:scale-110 transition-transform" />
+              <div>
+                <h2 className="text-xl font-bold text-yellow-400">Vender Tibia Coin</h2>
+                <p className="text-xs text-gray-400">Clique para lançar a venda e resetar os saldos de hunt</p>
+              </div>
+            </div>
+            <span className="text-2xl text-yellow-400 font-bold group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+
+          <div className="bg-[#151B31] p-6 rounded-xl border border-slate-800 flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-1">
+              <img src={TIBIA_COIN_ICON} alt="Tibia Coin Vendida" className="w-5 h-5 object-contain" />
+              <h2 className="text-sm font-semibold text-gray-300">Total de TCs Vendidas & Arrecadado</h2>
+            </div>
+            <div className="flex justify-between items-end mt-2">
+              <p className="text-2xl font-bold text-yellow-400 font-mono">{soldTcTotal} TC</p>
+              <p className="text-xl font-bold text-emerald-400 font-mono">
+                R$ {soldBrlTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* CONFIGURAÇÃO DE XP ATUAL DO PERSONAGEM */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
           <div className="flex items-center gap-2 mb-2">
@@ -490,22 +571,6 @@ export default function Home() {
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono"
             placeholder="Ex: 5228838172"
           />
-        </div>
-
-        {/* META TC */}
-        <div className="mt-6 bg-[#151B31] p-6 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-5 h-5 object-contain" />
-            <h2 className="font-semibold">Meta 5000 Tibia Coins</h2>
-          </div>
-          <p className="mb-3 text-gray-300">{tibiaCoins.toFixed(1)} / 5000 TC</p>
-          <div className="w-full bg-gray-700 h-4 rounded">
-            <div
-              className="bg-yellow-500 h-4 rounded transition-all duration-300"
-              style={{ width: `${progressGoal}%` }}
-            />
-          </div>
-          <p className="mt-2 text-sm text-gray-400">{progressGoal.toFixed(2)}%</p>
         </div>
 
         {/* PREÇO TC */}
@@ -640,6 +705,65 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* MODAL POP-UP DE VENDER TIBIA COIN */}
+      {showSellModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#151B31] p-6 rounded-xl w-full max-w-md border border-yellow-500/40 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-8 h-8 object-contain" />
+              <h2 className="text-2xl font-bold text-yellow-400">Vender Tibia Coin</h2>
+            </div>
+
+            {/* Saldo de TC Atual */}
+            <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 mb-4 flex justify-between items-center">
+              <span className="text-sm text-gray-400">Saldo de TC Atual:</span>
+              <span className="text-xl font-bold text-yellow-400 font-mono">{tibiaCoins.toFixed(1)} TC</span>
+            </div>
+
+            {/* Quantidade a Vender */}
+            <div className="mb-4">
+              <label className="block text-sm font-semibold mb-2 text-gray-300">
+                Quantas TC você vai vender?
+              </label>
+              <input
+                type="number"
+                value={tcToSellInput}
+                onChange={(e) => setTcToSellInput(e.target.value.replace(/\D/g, ""))}
+                placeholder="Ex: 1000"
+                className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono text-lg text-white"
+              />
+            </div>
+
+            {/* Quantos R$ Arrecadado */}
+            <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 mb-6 flex justify-between items-center">
+              <span className="text-sm text-gray-400">Quantos R$ foi arrecadado:</span>
+              <span className="text-xl font-bold text-emerald-400 font-mono">
+                R$ {brlToReceive.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            {/* Botões */}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowSellModal(false);
+                  setTcToSellInput("");
+                }}
+                className="px-4 py-2 rounded text-gray-400 hover:text-white text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmSellTc}
+                className="bg-yellow-500 text-black px-6 py-2 rounded font-bold text-sm hover:bg-yellow-400 transition"
+              >
+                Lançar e Resetar Saldos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DE AUTENTICAÇÃO */}
       {showAuthModal && (
