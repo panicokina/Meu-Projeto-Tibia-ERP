@@ -18,8 +18,6 @@ interface Hunt {
 }
 
 // Fórmula oficial do Tibia: experiência total necessária para atingir um level.
-const experienceForLevel = (level: number) =>
-  Math.floor((50 * level ** 3 - 150 * level ** 2 + 400 * level) / 3);
 const experienceForLevel = (level: number) => {
   // No Tibia, o level 8 começa em 0 XP; por isso a fórmula usa level - 1.
   const formulaLevel = Math.max(0, level - 1);
@@ -88,9 +86,6 @@ export default function Home() {
     world: "Inabra",
   });
 
-  // ESTADOS MANUAIS DE LEVEL E PROGRESSO DE XP
-  const [currentLevel, setCurrentLevel] = useState<number>(682);
-  const [manualPercentage, setManualPercentage] = useState<number>(64.55);
   // XP total exata informada no Tibia. Level e porcentagem são derivados dela.
   const [currentExperience, setCurrentExperience] = useState<number>(5_277_341_338);
   const currentProgress = progressFromExperience(currentExperience);
@@ -151,8 +146,6 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
-          setCurrentLevel(Number(data.current_level) || 682);
-          setManualPercentage(Number(data.manual_percentage) ?? 64.55);
           const savedExperience = Number(data.current_experience);
           if (Number.isFinite(savedExperience) && savedExperience > 0) {
             setCurrentExperience(savedExperience);
@@ -182,7 +175,6 @@ export default function Home() {
     newLevel: number = currentLevel,
     newPercentage: number = manualPercentage,
     newSoldTcTotal: number = soldTcTotal,
-    newSoldBrlTotal: number = soldBrlTotal
     newSoldBrlTotal: number = soldBrlTotal,
     newCurrentExperience: number = currentExperience
   ) => {
@@ -209,18 +201,6 @@ export default function Home() {
     } catch (err) {
       console.error("Erro ao salvar no Supabase:", err);
     }
-  };
-
-  const handleLevelChange = (newLvl: number) => {
-    const validLvl = Math.max(1, newLvl);
-    setCurrentLevel(validLvl);
-    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, validLvl, manualPercentage);
-  };
-
-  const handlePercentageChange = (val: number) => {
-    const validPct = Math.min(100, Math.max(0, val));
-    setManualPercentage(validPct);
-    saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, currentLevel, validPct);
   };
 
   function importHunt() {
@@ -281,8 +261,6 @@ export default function Home() {
     const updatedBalance = balance + balanceValue;
     const updatedXpGainedTotal = totalXpGained + xpValue;
     const updatedHunts = hunts + 1;
-    const currentExperience = experienceFromProgress(currentLevel, manualPercentage);
-    const updatedProgress = progressFromExperience(currentExperience + xpValue);
     const updatedExperience = currentExperience + xpValue;
     const updatedProgress = progressFromExperience(updatedExperience);
 
@@ -304,8 +282,6 @@ export default function Home() {
     setTotalXpGained(updatedXpGainedTotal);
     setHunts(updatedHunts);
     setHistory(updatedHistory);
-    setCurrentLevel(updatedProgress.level);
-    setManualPercentage(updatedProgress.percentage);
     setCurrentExperience(updatedExperience);
     setAnalyzer("");
 
@@ -318,7 +294,6 @@ export default function Home() {
       updatedXpGainedTotal,
       updatedHistory,
       updatedProgress.level,
-      updatedProgress.percentage
       updatedProgress.percentage,
       soldTcTotal,
       soldBrlTotal,
@@ -397,8 +372,6 @@ export default function Home() {
         const updatedBalance = balance - huntToDelete.balance;
         const updatedXpGainedTotal = totalXpGained - (huntToDelete.xp || 0);
         const updatedHunts = Math.max(hunts - 1, 0);
-        const currentExperience = experienceFromProgress(currentLevel, manualPercentage);
-        const updatedProgress = progressFromExperience(
         const updatedExperience = Math.max(
           0,
           currentExperience - (huntToDelete.xp || 0)
@@ -411,8 +384,6 @@ export default function Home() {
         setTotalXpGained(updatedXpGainedTotal);
         setHunts(updatedHunts);
         setHistory(updatedHistory);
-        setCurrentLevel(updatedProgress.level);
-        setManualPercentage(updatedProgress.percentage);
         setCurrentExperience(updatedExperience);
 
         await saveDataToSupabase(
@@ -424,7 +395,6 @@ export default function Home() {
           updatedXpGainedTotal,
           updatedHistory,
           updatedProgress.level,
-          updatedProgress.percentage
           updatedProgress.percentage,
           soldTcTotal,
           soldBrlTotal,
@@ -486,50 +456,18 @@ export default function Home() {
                 />
               </div>
 
-              {/* Ajuste manual apenas para definir ou corrigir o ponto inicial */}
               {/* Calculado pela XP total, sem ajuste manual */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-gray-300">Level Atual</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleLevelChange(currentLevel - 1)}
-                    className="bg-slate-800 hover:bg-slate-700 text-yellow-400 font-bold px-2 py-0.5 rounded border border-slate-700 text-sm transition"
-                    title="Diminuir Level"
-                  >
-                    ▼
-                  </button>
-                  <span className="text-2xl font-bold text-yellow-400 font-mono min-w-[50px] text-center">
-                    {currentLevel}
-                  </span>
                 <span className="text-2xl font-bold text-yellow-400 font-mono">
                   {currentLevel}
                 </span>
-                  <button
-                    onClick={() => handleLevelChange(currentLevel + 1)}
-                    className="bg-slate-800 hover:bg-slate-700 text-yellow-400 font-bold px-2 py-0.5 rounded border border-slate-700 text-sm transition"
-                    title="Aumentar Level"
-                  >
-                    ▲
-                  </button>
-                </div>
               </div>
 
               {/* Atualizado automaticamente a cada Hunt Analyzer importado */}
               <div className="bg-[#0B1020] p-3 rounded-lg border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center text-xs text-gray-300">
                   <span>Progresso do Level ({currentLevel + 1})</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      max="100"
-                      value={manualPercentage}
-                      onChange={(e) => handlePercentageChange(parseFloat(e.target.value) || 0)}
-                      className="w-16 bg-[#151B31] text-emerald-400 font-mono text-xs px-1 py-0.5 rounded border border-slate-700 text-right focus:outline-none focus:border-yellow-500"
-                    />
-                    <span className="text-emerald-400 font-mono">%</span>
-                  </div>
                   <span className="text-emerald-400 font-mono">
                     {manualPercentage.toFixed(2)}%
                   </span>
@@ -892,3 +830,5 @@ export default function Home() {
     </div>
   );
 }
+
+
