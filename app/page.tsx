@@ -20,6 +20,13 @@ interface Hunt {
 // Fórmula oficial do Tibia: experiência total necessária para atingir um level.
 const experienceForLevel = (level: number) =>
   Math.floor((50 * level ** 3 - 150 * level ** 2 + 400 * level) / 3);
+const experienceForLevel = (level: number) => {
+  // No Tibia, o level 8 começa em 0 XP; por isso a fórmula usa level - 1.
+  const formulaLevel = Math.max(0, level - 1);
+  return Math.floor(
+    (50 * formulaLevel ** 3 - 150 * formulaLevel ** 2 + 400 * formulaLevel) / 3
+  );
+};
 
 const experienceFromProgress = (level: number, percentage: number) => {
   const safeLevel = Math.max(1, Math.floor(level));
@@ -84,6 +91,11 @@ export default function Home() {
   // ESTADOS MANUAIS DE LEVEL E PROGRESSO DE XP
   const [currentLevel, setCurrentLevel] = useState<number>(682);
   const [manualPercentage, setManualPercentage] = useState<number>(64.55);
+  // XP total exata informada no Tibia. Level e porcentagem são derivados dela.
+  const [currentExperience, setCurrentExperience] = useState<number>(5_277_341_338);
+  const currentProgress = progressFromExperience(currentExperience);
+  const currentLevel = currentProgress.level;
+  const manualPercentage = currentProgress.percentage;
 
   const [analyzer, setAnalyzer] = useState("");
   const [tcPrice, setTcPrice] = useState(42500);
@@ -141,6 +153,10 @@ export default function Home() {
           setTotalXpGained(Number(data.total_xp) || 0);
           setCurrentLevel(Number(data.current_level) || 682);
           setManualPercentage(Number(data.manual_percentage) ?? 64.55);
+          const savedExperience = Number(data.current_experience);
+          if (Number.isFinite(savedExperience) && savedExperience > 0) {
+            setCurrentExperience(savedExperience);
+          }
           setHistory(data.history || []);
           setSoldTcTotal(Number(data.sold_tc_total) || 0);
           setSoldBrlTotal(Number(data.sold_brl_total) || 0);
@@ -167,6 +183,8 @@ export default function Home() {
     newPercentage: number = manualPercentage,
     newSoldTcTotal: number = soldTcTotal,
     newSoldBrlTotal: number = soldBrlTotal
+    newSoldBrlTotal: number = soldBrlTotal,
+    newCurrentExperience: number = currentExperience
   ) => {
     if (!supabaseUrl || !supabaseAnonKey) return;
 
@@ -182,6 +200,7 @@ export default function Home() {
         total_xp: newXpGainedTotal,
         current_level: newLevel,
         manual_percentage: newPercentage,
+        current_experience: newCurrentExperience,
         history: newHistory,
         sold_tc_total: newSoldTcTotal,
         sold_brl_total: newSoldBrlTotal,
@@ -264,6 +283,8 @@ export default function Home() {
     const updatedHunts = hunts + 1;
     const currentExperience = experienceFromProgress(currentLevel, manualPercentage);
     const updatedProgress = progressFromExperience(currentExperience + xpValue);
+    const updatedExperience = currentExperience + xpValue;
+    const updatedProgress = progressFromExperience(updatedExperience);
 
     const newHunt: Hunt = {
       id: Date.now(),
@@ -285,6 +306,7 @@ export default function Home() {
     setHistory(updatedHistory);
     setCurrentLevel(updatedProgress.level);
     setManualPercentage(updatedProgress.percentage);
+    setCurrentExperience(updatedExperience);
     setAnalyzer("");
 
     saveDataToSupabase(
@@ -297,6 +319,10 @@ export default function Home() {
       updatedHistory,
       updatedProgress.level,
       updatedProgress.percentage
+      updatedProgress.percentage,
+      soldTcTotal,
+      soldBrlTotal,
+      updatedExperience
     );
   }
 
@@ -373,8 +399,11 @@ export default function Home() {
         const updatedHunts = Math.max(hunts - 1, 0);
         const currentExperience = experienceFromProgress(currentLevel, manualPercentage);
         const updatedProgress = progressFromExperience(
+        const updatedExperience = Math.max(
+          0,
           currentExperience - (huntToDelete.xp || 0)
         );
+        const updatedProgress = progressFromExperience(updatedExperience);
 
         setLoot(updatedLoot);
         setSupplies(updatedSupplies);
@@ -384,6 +413,7 @@ export default function Home() {
         setHistory(updatedHistory);
         setCurrentLevel(updatedProgress.level);
         setManualPercentage(updatedProgress.percentage);
+        setCurrentExperience(updatedExperience);
 
         await saveDataToSupabase(
           updatedLoot,
@@ -395,6 +425,10 @@ export default function Home() {
           updatedHistory,
           updatedProgress.level,
           updatedProgress.percentage
+          updatedProgress.percentage,
+          soldTcTotal,
+          soldBrlTotal,
+          updatedExperience
         );
         alert("Hunt removida com sucesso!");
       }
@@ -453,6 +487,7 @@ export default function Home() {
               </div>
 
               {/* Ajuste manual apenas para definir ou corrigir o ponto inicial */}
+              {/* Calculado pela XP total, sem ajuste manual */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-gray-300">Level Atual</span>
                 <div className="flex items-center gap-2">
@@ -466,6 +501,9 @@ export default function Home() {
                   <span className="text-2xl font-bold text-yellow-400 font-mono min-w-[50px] text-center">
                     {currentLevel}
                   </span>
+                <span className="text-2xl font-bold text-yellow-400 font-mono">
+                  {currentLevel}
+                </span>
                   <button
                     onClick={() => handleLevelChange(currentLevel + 1)}
                     className="bg-slate-800 hover:bg-slate-700 text-yellow-400 font-bold px-2 py-0.5 rounded border border-slate-700 text-sm transition"
@@ -492,6 +530,9 @@ export default function Home() {
                     />
                     <span className="text-emerald-400 font-mono">%</span>
                   </div>
+                  <span className="text-emerald-400 font-mono">
+                    {manualPercentage.toFixed(2)}%
+                  </span>
                 </div>
 
                 <div className="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-700">
@@ -851,4 +892,3 @@ export default function Home() {
     </div>
   );
 }
-
