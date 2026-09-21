@@ -17,6 +17,53 @@ interface Hunt {
   xp: number;
 }
 
+// Fórmula oficial do Tibia: experiência total necessária para atingir um level.
+const experienceForLevel = (level: number) =>
+  Math.floor((50 * level ** 3 - 150 * level ** 2 + 400 * level) / 3);
+
+const experienceFromProgress = (level: number, percentage: number) => {
+  const safeLevel = Math.max(1, Math.floor(level));
+  const safePercentage = Math.min(100, Math.max(0, percentage));
+  const levelExperience = experienceForLevel(safeLevel);
+  const nextLevelExperience = experienceForLevel(safeLevel + 1);
+
+  return levelExperience +
+    ((nextLevelExperience - levelExperience) * safePercentage) / 100;
+};
+
+const progressFromExperience = (experience: number) => {
+  const safeExperience = Math.max(0, experience);
+  let lowerLevel = 1;
+  let upperLevel = 2;
+
+  while (experienceForLevel(upperLevel) <= safeExperience) {
+    lowerLevel = upperLevel;
+    upperLevel *= 2;
+  }
+
+  while (lowerLevel + 1 < upperLevel) {
+    const middleLevel = Math.floor((lowerLevel + upperLevel) / 2);
+
+    if (experienceForLevel(middleLevel) <= safeExperience) {
+      lowerLevel = middleLevel;
+    } else {
+      upperLevel = middleLevel;
+    }
+  }
+
+  const levelExperience = experienceForLevel(lowerLevel);
+  const nextLevelExperience = experienceForLevel(lowerLevel + 1);
+  const percentage =
+    ((safeExperience - levelExperience) /
+      (nextLevelExperience - levelExperience)) *
+    100;
+
+  return {
+    level: lowerLevel,
+    percentage: Number(Math.min(100, Math.max(0, percentage)).toFixed(4)),
+  };
+};
+
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina";
   const OUTFIT_IMAGE_URL = "/greey-kina.png";
@@ -215,6 +262,8 @@ export default function Home() {
     const updatedBalance = balance + balanceValue;
     const updatedXpGainedTotal = totalXpGained + xpValue;
     const updatedHunts = hunts + 1;
+    const currentExperience = experienceFromProgress(currentLevel, manualPercentage);
+    const updatedProgress = progressFromExperience(currentExperience + xpValue);
 
     const newHunt: Hunt = {
       id: Date.now(),
@@ -234,6 +283,8 @@ export default function Home() {
     setTotalXpGained(updatedXpGainedTotal);
     setHunts(updatedHunts);
     setHistory(updatedHistory);
+    setCurrentLevel(updatedProgress.level);
+    setManualPercentage(updatedProgress.percentage);
     setAnalyzer("");
 
     saveDataToSupabase(
@@ -244,8 +295,8 @@ export default function Home() {
       tcPrice,
       updatedXpGainedTotal,
       updatedHistory,
-      currentLevel,
-      manualPercentage
+      updatedProgress.level,
+      updatedProgress.percentage
     );
   }
 
@@ -320,6 +371,10 @@ export default function Home() {
         const updatedBalance = balance - huntToDelete.balance;
         const updatedXpGainedTotal = totalXpGained - (huntToDelete.xp || 0);
         const updatedHunts = Math.max(hunts - 1, 0);
+        const currentExperience = experienceFromProgress(currentLevel, manualPercentage);
+        const updatedProgress = progressFromExperience(
+          currentExperience - (huntToDelete.xp || 0)
+        );
 
         setLoot(updatedLoot);
         setSupplies(updatedSupplies);
@@ -327,6 +382,8 @@ export default function Home() {
         setTotalXpGained(updatedXpGainedTotal);
         setHunts(updatedHunts);
         setHistory(updatedHistory);
+        setCurrentLevel(updatedProgress.level);
+        setManualPercentage(updatedProgress.percentage);
 
         await saveDataToSupabase(
           updatedLoot,
@@ -336,8 +393,8 @@ export default function Home() {
           tcPrice,
           updatedXpGainedTotal,
           updatedHistory,
-          currentLevel,
-          manualPercentage
+          updatedProgress.level,
+          updatedProgress.percentage
         );
         alert("Hunt removida com sucesso!");
       }
@@ -377,7 +434,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL COM LEVEL E PROGRESSO MANUAIS */}
+          {/* CARD DE PERFIL COM LEVEL E PROGRESSO AUTOMÁTICOS */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -395,7 +452,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* CONTROLE MANUAL DE LEVEL */}
+              {/* Ajuste manual apenas para definir ou corrigir o ponto inicial */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-gray-300">Level Atual</span>
                 <div className="flex items-center gap-2">
@@ -419,14 +476,14 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* CONTROLE MANUAL DA BARRA DE PROGRESSO DE XP */}
+              {/* Atualizado automaticamente a cada Hunt Analyzer importado */}
               <div className="bg-[#0B1020] p-3 rounded-lg border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center text-xs text-gray-300">
                   <span>Progresso do Level ({currentLevel + 1})</span>
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.0001"
                       min="0"
                       max="100"
                       value={manualPercentage}
@@ -445,7 +502,7 @@ export default function Home() {
                 </div>
 
                 <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                  <span>{manualPercentage}% Concluído</span>
+                  <span>{manualPercentage.toFixed(2)}% Concluído</span>
                   <span>{(100 - manualPercentage).toFixed(2)}% Restante</span>
                 </div>
               </div>
@@ -794,3 +851,4 @@ export default function Home() {
     </div>
   );
 }
+
