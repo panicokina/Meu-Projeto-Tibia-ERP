@@ -214,9 +214,6 @@ export default function Home() {
   // CUSTO POR GOLD TOKEN (6 GTs + 250k taxa shrine)
   const gtFeePerImbuement = (6 * gtPrice) + 250000;
 
-  // CUSTOS TOTALIZADOS BASEADOS NA QUANTIDADE SELECIONADA
-  const totalCostGT = (strikeQty + voidQty + vampirismQty) * gtFeePerImbuement;
-  const totalCostItems = (strikeQty * strikeItemCost) + (voidQty * voidItemCost) + (vampirismQty * vampirismItemCost);
   const imbuementComparisons = [
     { key: "strike", label: "Critical (Powerful Strike)", quantity: strikeQty, itemCost: strikeItemCost },
     { key: "void", label: "Void (Powerful Void)", quantity: voidQty, itemCost: voidItemCost },
@@ -225,9 +222,6 @@ export default function Home() {
     const goldTokenCost = imbuement.quantity * gtFeePerImbuement;
     const creatureProductCost = imbuement.quantity * imbuement.itemCost;
 
-  const totalImbuementsSelected = strikeQty + voidQty + vampirismQty;
-  const isGtCheaper = totalCostGT <= totalCostItems;
-  const bestTotalCost = totalImbuementsSelected > 0 ? (isGtCheaper ? totalCostGT : totalCostItems) : 0;
     return {
       ...imbuement,
       goldTokenCost,
@@ -1064,23 +1058,6 @@ export default function Home() {
           {/* DICA DE ECONOMIA E BOTÃO DE ABATIMENTO */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-[#0B1020] p-4 rounded-xl border border-slate-800">
             <div>
-              <p className="text-xs text-gray-400 mb-1">
-                Comparativo de Custo Total ({totalImbuementsSelected} imbuement{totalImbuementsSelected !== 1 ? "s" : ""}):
-              </p>
-              <div className="flex items-center gap-4 text-sm">
-                <span>Via GT (6x + 250k): <strong className="text-yellow-400 font-mono">{totalCostGT.toLocaleString("pt-BR")} GP</strong></span>
-                <span>•</span>
-                <span>Via Itens de Criatura: <strong className="text-emerald-400 font-mono">{totalCostItems.toLocaleString("pt-BR")} GP</strong></span>
-              </div>
-              <p className="text-sm font-bold mt-1">
-                {totalImbuementsSelected === 0 ? (
-                  <span className="text-gray-400">Selecione ao menos 1 imbuement acima para comparar.</span>
-                ) : isGtCheaper ? (
-                  <span className="text-yellow-400">💡 Vale mais a pena usar Gold Tokens! (Economia de {Math.abs(totalCostItems - totalCostGT).toLocaleString("pt-BR")} GP)</span>
-                ) : (
-                  <span className="text-emerald-400">💡 Vale mais a pena comprar Produtos de Criatura! (Economia de {Math.abs(totalCostGT - totalCostItems).toLocaleString("pt-BR")} GP)</span>
-                )}
-              </p>
               <p className="text-xs text-gray-400 mb-2">Comparação individual por imbuement:</p>
               {totalImbuementsSelected === 0 ? (
                 <p className="text-sm text-gray-400">Selecione ao menos 1 imbuement acima para comparar.</p>
@@ -1108,7 +1085,6 @@ export default function Home() {
               onClick={applyImbuementDeduction}
               className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-3 rounded-lg font-bold transition shadow-lg flex items-center gap-2 whitespace-nowrap"
             >
-              Abater Despesa ({bestTotalCost.toLocaleString("pt-BR")} GP)
               Abater Menor Custo por Imbuement ({bestTotalCost.toLocaleString("pt-BR")} GP)
             </button>
           </div>
