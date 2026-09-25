@@ -19,21 +19,10 @@ interface Hunt {
 
 // Fórmula oficial do Tibia: experiência total necessária para atingir um level.
 const experienceForLevel = (level: number) => {
-  // No Tibia, o level 8 começa em 0 XP; por isso a fórmula usa level - 1.
   const formulaLevel = Math.max(0, level - 1);
   return Math.floor(
     (50 * formulaLevel ** 3 - 150 * formulaLevel ** 2 + 400 * formulaLevel) / 3
   );
-};
-
-const experienceFromProgress = (level: number, percentage: number) => {
-  const safeLevel = Math.max(1, Math.floor(level));
-  const safePercentage = Math.min(100, Math.max(0, percentage));
-  const levelExperience = experienceForLevel(safeLevel);
-  const nextLevelExperience = experienceForLevel(safeLevel + 1);
-
-  return levelExperience +
-    ((nextLevelExperience - levelExperience) * safePercentage) / 100;
 };
 
 const progressFromExperience = (experience: number) => {
@@ -80,13 +69,18 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
+  // ÍCONES OFICIAIS DO TIBIA WIKI / FANDOM PARA IMBUEMENTS
+  const POWERFUL_STRIKE_ICON = "https://tibia.fandom.com/wiki/Special:Redirect/file/Powerful_Strike.png";
+  const POWERFUL_VOID_ICON = "https://tibia.fandom.com/wiki/Special:Redirect/file/Powerful_Void.png";
+  const POWERFUL_VAMPIRISM_ICON = "https://tibia.fandom.com/wiki/Special:Redirect/file/Powerful_Vampirism.png";
+  const GOLD_TOKEN_ICON = "https://tibia.fandom.com/wiki/Special:Redirect/file/Gold_Token.png";
+
   const [charData] = useState({
     name: CHARACTER_NAME,
     vocation: "Elite Knight",
     world: "Inabra",
   });
 
-  // XP total exata informada no Tibia. Level e porcentagem são derivados dela.
   const [currentExperience, setCurrentExperience] = useState<number>(5_277_341_338);
   const currentProgress = progressFromExperience(currentExperience);
   const currentLevel = currentProgress.level;
@@ -101,7 +95,6 @@ export default function Home() {
   const [hunts, setHunts] = useState(0);
   const [totalXpGained, setTotalXpGained] = useState(0);
 
-  // Vendas acumuladas de Tibia Coins
   const [soldTcTotal, setSoldTcTotal] = useState(0);
   const [soldBrlTotal, setSoldBrlTotal] = useState(0);
 
@@ -110,11 +103,18 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // ESTADOS DA CALCULADORA DE IMBUEMENT
+  const [gtPrice, setGtPrice] = useState(47000); // Valor padrão do Gold Token em GP
+  const [marketScrollPrice, setMarketScrollPrice] = useState(580000); // Preço médio do scroll/itens no Market
+  const [strikeQty, setStrikeQty] = useState(0);
+  const [voidQty, setVoidQty] = useState(0);
+  const [vampirismQty, setVampirismQty] = useState(0);
+
   // Modal Vender Tibia Coin
   const [showSellModal, setShowSellModal] = useState(false);
   const [tcToSellInput, setTcToSellInput] = useState("");
 
-  // Modal de Autenticação para exclusões
+  // Modal de Autenticação
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authUsername, setAuthUsername] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -122,8 +122,15 @@ export default function Home() {
   const [huntToDelete, setHuntToDelete] = useState<Hunt | null>(null);
 
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
-  // Cotação: 250 TC = R$ 50 -> R$ 0.20 por TC
   const realMoney = tibiaCoins * (50 / 250);
+
+  // CÁLCULOS DE IMBUEMENT
+  const totalImbuementsSelected = strikeQty + voidQty + vampirismQty;
+  const gtFeePerImbuement = (6 * gtPrice) + 250000; // 6 GTs + 250k de taxa de shrine
+  const totalCostGT = totalImbuementsSelected * gtFeePerImbuement;
+  const totalCostMarket = totalImbuementsSelected * marketScrollPrice;
+  const isGtCheaper = totalCostGT <= totalCostMarket;
+  const bestTotalCost = Math.min(totalCostGT, totalCostMarket);
 
   useEffect(() => {
     async function loadDataFromSupabase() {
@@ -201,6 +208,39 @@ export default function Home() {
     } catch (err) {
       console.error("Erro ao salvar no Supabase:", err);
     }
+  };
+
+  // ABATER CUSTO DE IMBUEMENT DO SALDO
+  const applyImbuementDeduction = async () => {
+    if (totalImbuementsSelected <= 0) {
+      alert("Selecione a quantidade de imbuements a serem renovados.");
+      return;
+    }
+
+    const costToDeduct = isGtCheaper ? totalCostGT : totalCostMarket;
+    const updatedBalance = balance - costToDeduct;
+
+    setBalance(updatedBalance);
+    setStrikeQty(0);
+    setVoidQty(0);
+    setVampirismQty(0);
+
+    await saveDataToSupabase(
+      loot,
+      supplies,
+      updatedBalance,
+      hunts,
+      tcPrice,
+      totalXpGained,
+      history,
+      currentLevel,
+      manualPercentage,
+      soldTcTotal,
+      soldBrlTotal,
+      currentExperience
+    );
+
+    alert(`Despesa de Imbuement de ${costToDeduct.toLocaleString("pt-BR")} GP abatida do Saldo Consolidado com sucesso!`);
   };
 
   function importHunt() {
@@ -301,7 +341,6 @@ export default function Home() {
     );
   }
 
-  // AÇÃO DE VENDER TC E RESETAR SALDOS DE FINANCEIRO MANTENDO A XP
   const confirmSellTc = async () => {
     const tcQty = parseInt(tcToSellInput, 10);
     if (isNaN(tcQty) || tcQty <= 0) {
@@ -314,7 +353,6 @@ export default function Home() {
     const updatedSoldTc = soldTcTotal + tcQty;
     const updatedSoldBrl = soldBrlTotal + brlArrecadado;
 
-    // Reseta o financeiro (Saldo, Loot e Supplies)
     setBalance(0);
     setLoot(0);
     setSupplies(0);
@@ -438,7 +476,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL COM LEVEL E PROGRESSO AUTOMÁTICOS */}
+          {/* CARD DE PERFIL */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -456,7 +494,6 @@ export default function Home() {
                 />
               </div>
 
-              {/* Calculado pela XP total, sem ajuste manual */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-gray-300">Level Atual</span>
                 <span className="text-2xl font-bold text-yellow-400 font-mono">
@@ -464,7 +501,6 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* Atualizado automaticamente a cada Hunt Analyzer importado */}
               <div className="bg-[#0B1020] p-3 rounded-lg border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center text-xs text-gray-300">
                   <span>Progresso do Level ({currentLevel + 1})</span>
@@ -501,7 +537,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* CARD TIBIA COINS COM VALOR EM REAIS */}
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Tibia Coins</h2>
               <div className="flex items-center gap-2">
@@ -550,6 +585,130 @@ export default function Home() {
             </div>
           </div>
 
+        </div>
+
+        {/* NEW: CARD CALCULADORA & ABATIMENTO DE IMBUEMENT */}
+        <div className="mt-6 bg-[#151B31] p-6 rounded-xl border border-cyan-500/30">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <img src={GOLD_TOKEN_ICON} alt="Gold Token" className="w-8 h-8 object-contain" />
+              <h2 className="text-2xl font-bold text-cyan-400">Calculadora & Despesa de Imbuements</h2>
+            </div>
+            <span className="text-xs text-gray-400">Compara Gold Tokens vs. Market/Creature Products</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* SELEÇÃO DE IMBUEMENTS COM PNGs DO TIBIA WIKI */}
+            <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img src={POWERFUL_STRIKE_ICON} alt="Powerful Strike" className="w-10 h-10 object-contain" />
+                <div>
+                  <h3 className="font-bold text-yellow-400 text-sm">Powerful Strike</h3>
+                  <p className="text-[10px] text-gray-400">Crit (+30%)</p>
+                </div>
+              </div>
+              <input
+                type="number"
+                min="0"
+                value={strikeQty}
+                onChange={(e) => setStrikeQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                className="w-16 bg-[#151B31] p-2 rounded border border-slate-700 text-center text-white font-mono"
+              />
+            </div>
+
+            <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img src={POWERFUL_VOID_ICON} alt="Powerful Void" className="w-10 h-10 object-contain" />
+                <div>
+                  <h3 className="font-bold text-cyan-400 text-sm">Powerful Void</h3>
+                  <p className="text-[10px] text-gray-400">Mana Leech (+8%)</p>
+                </div>
+              </div>
+              <input
+                type="number"
+                min="0"
+                value={voidQty}
+                onChange={(e) => setVoidQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                className="w-16 bg-[#151B31] p-2 rounded border border-slate-700 text-center text-white font-mono"
+              />
+            </div>
+
+            <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img src={POWERFUL_VAMPIRISM_ICON} alt="Powerful Vampirism" className="w-10 h-10 object-contain" />
+                <div>
+                  <h3 className="font-bold text-red-400 text-sm">Powerful Vampirism</h3>
+                  <p className="text-[10px] text-gray-400">Life Leech (+25%)</p>
+                </div>
+              </div>
+              <input
+                type="number"
+                min="0"
+                value={vampirismQty}
+                onChange={(e) => setVampirismQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                className="w-16 bg-[#151B31] p-2 rounded border border-slate-700 text-center text-white font-mono"
+              />
+            </div>
+          </div>
+
+          {/* COTAÇÕES E ANÁLISE "VALE A PENA?" */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-[#0B1020] p-4 rounded-lg border border-slate-800">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Preço Atual do Gold Token (GP)
+              </label>
+              <input
+                type="number"
+                value={gtPrice}
+                onChange={(e) => setGtPrice(Math.max(0, Number(e.target.value) || 0))}
+                className="w-full bg-[#151B31] p-2.5 rounded border border-slate-700 focus:outline-none focus:border-cyan-400 font-mono text-sm"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Custo GT (6 GTs + 250k taxa): <span className="text-yellow-400 font-mono">{gtFeePerImbuement.toLocaleString("pt-BR")} GP</span> / imbuement
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Preço do Scroll/Itens no Market (GP)
+              </label>
+              <input
+                type="number"
+                value={marketScrollPrice}
+                onChange={(e) => setMarketScrollPrice(Math.max(0, Number(e.target.value) || 0))}
+                className="w-full bg-[#151B31] p-2.5 rounded border border-slate-700 focus:outline-none focus:border-cyan-400 font-mono text-sm"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Custo no Market: <span className="text-yellow-400 font-mono">{marketScrollPrice.toLocaleString("pt-BR")} GP</span> / imbuement
+              </p>
+            </div>
+          </div>
+
+          {/* PAINEL DE DECISÃO E ABATIMENTO */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-[#151B31] p-4 rounded-lg border border-slate-700">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Análise de Custo ({totalImbuementsSelected} imbuements):</p>
+              <p className="text-lg font-bold">
+                {isGtCheaper ? (
+                  <span className="text-emerald-400">💡 Compensa usar Gold Tokens! ({totalCostGT.toLocaleString("pt-BR")} GP)</span>
+                ) : (
+                  <span className="text-yellow-400">💡 Compensa comprar no Market! ({totalCostMarket.toLocaleString("pt-BR")} GP)</span>
+                )}
+              </p>
+              {totalImbuementsSelected > 0 && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Economia estimada de <span className="text-emerald-400 font-mono">{Math.abs(totalCostGT - totalCostMarket).toLocaleString("pt-BR")} GP</span>
+                </p>
+              )}
+            </div>
+
+            <button
+              onClick={applyImbuementDeduction}
+              className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-3 rounded-lg font-bold transition shadow-lg flex items-center gap-2 whitespace-nowrap"
+            >
+              Abater Despesa do Saldo Consolidado ({bestTotalCost.toLocaleString("pt-BR")} GP)
+            </button>
+          </div>
         </div>
 
         {/* BOTÃO / CARD VENDER TIBIA COIN E MÉTRICAS DE VENDAS */}
@@ -724,13 +883,11 @@ export default function Home() {
               <h2 className="text-2xl font-bold text-yellow-400">Vender Tibia Coin</h2>
             </div>
 
-            {/* Saldo de TC Atual */}
             <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 mb-4 flex justify-between items-center">
               <span className="text-sm text-gray-400">Saldo de TC Atual:</span>
               <span className="text-xl font-bold text-yellow-400 font-mono">{tibiaCoins.toFixed(1)} TC</span>
             </div>
 
-            {/* Quantidade a Vender */}
             <div className="mb-4">
               <label className="block text-sm font-semibold mb-2 text-gray-300">
                 Quantas TC você vai vender?
@@ -744,7 +901,6 @@ export default function Home() {
               />
             </div>
 
-            {/* Quantos R$ Arrecadado */}
             <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 mb-6 flex justify-between items-center">
               <span className="text-sm text-gray-400">Quantos R$ foi arrecadado:</span>
               <span className="text-xl font-bold text-emerald-400 font-mono">
@@ -752,7 +908,6 @@ export default function Home() {
               </span>
             </div>
 
-            {/* Botões */}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {
@@ -830,5 +985,3 @@ export default function Home() {
     </div>
   );
 }
-
-
