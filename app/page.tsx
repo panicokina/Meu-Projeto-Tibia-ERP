@@ -69,7 +69,7 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  // ÍCONES LOCAIS (Coloque os arquivos na pasta public/ do projeto Next.js)
+  // ÍCONES LOCAIS (Certifique-se de ter esses arquivos salvos dentro da pasta public/)
   const POWERFUL_STRIKE_ICON = "/Powerful_Strike.png";
   const POWERFUL_VOID_ICON = "/Powerful_Void.png";
   const POWERFUL_VAMPIRISM_ICON = "/Powerful_Vampirism.png";
@@ -610,17 +610,14 @@ export default function Home() {
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl border border-cyan-500/30">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center overflow-hidden">
-                <img 
-                  src={GOLD_TOKEN_ICON} 
-                  alt="Gold Token" 
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    // Fallback visual caso a imagem na pasta public ainda não tenha sido colocada
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
+              <img 
+                src={GOLD_TOKEN_ICON} 
+                alt="Gold Token" 
+                className="w-8 h-8 object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
               <div>
                 <h2 className="text-2xl font-bold text-cyan-400">Calculadora & Despesa de Imbuements</h2>
                 <p className="text-xs text-gray-400">Compare Gold Tokens vs. Produtos de Criatura em tempo real</p>
@@ -645,16 +642,14 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={POWERFUL_STRIKE_ICON} 
-                        alt="Powerful Strike" 
-                        className="w-full h-full object-contain" 
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
+                    <img 
+                      src={POWERFUL_STRIKE_ICON} 
+                      alt="Powerful Strike" 
+                      className="w-8 h-8 object-contain" 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                     <div>
                       <h3 className="font-bold text-yellow-400 text-sm">Powerful Strike</h3>
                       <p className="text-[10px] text-gray-400">Crit (+30%)</p>
@@ -718,16 +713,14 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={POWERFUL_VOID_ICON} 
-                        alt="Powerful Void" 
-                        className="w-full h-full object-contain" 
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
+                    <img 
+                      src={POWERFUL_VOID_ICON} 
+                      alt="Powerful Void" 
+                      className="w-8 h-8 object-contain" 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                     <div>
                       <h3 className="font-bold text-cyan-400 text-sm">Powerful Void</h3>
                       <p className="text-[10px] text-gray-400">Mana Leech (+8%)</p>
@@ -791,16 +784,14 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-red-500/10 border border-red-500/30 flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={POWERFUL_VAMPIRISM_ICON} 
-                        alt="Powerful Vampirism" 
-                        className="w-full h-full object-contain" 
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
+                    <img 
+                      src={POWERFUL_VAMPIRISM_ICON} 
+                      alt="Powerful Vampirism" 
+                      className="w-8 h-8 object-contain" 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                     <div>
                       <h3 className="font-bold text-red-400 text-sm">Powerful Vampirism</h3>
                       <p className="text-[10px] text-gray-400">Life Leech (+25%)</p>
