@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -17,6 +16,32 @@ interface Hunt {
   tc: number;
   xp: number;
 }
+
+interface ImbuementPrices {
+  gtPrice: number;
+  protectiveCharmPrice: number;
+  sabretoothPrice: number;
+  vexclawTalonPrice: number;
+  ropeBeltPrice: number;
+  silencerClawPrice: number;
+  grimeleechWingPrice: number;
+  vampireTeethPrice: number;
+  bloodyPincerPrice: number;
+  deadBrainPrice: number;
+}
+
+const DEFAULT_IMBUEMENT_PRICES: ImbuementPrices = {
+  gtPrice: 47000,
+  protectiveCharmPrice: 2500,
+  sabretoothPrice: 4000,
+  vexclawTalonPrice: 1000,
+  ropeBeltPrice: 2500,
+  silencerClawPrice: 3000,
+  grimeleechWingPrice: 1200,
+  vampireTeethPrice: 2300,
+  bloodyPincerPrice: 7000,
+  deadBrainPrice: 1200,
+};
 
 // Fórmula oficial do Tibia: experiência total necessária para atingir um level.
 const experienceForLevel = (level: number) => {
@@ -108,7 +133,7 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   // ESTADOS DA CALCULADORA DE IMBUEMENT
-  const [gtPrice, setGtPrice] = useState(47000);
+  const [gtPrice, setGtPrice] = useState(DEFAULT_IMBUEMENT_PRICES.gtPrice);
   const [strikeQty, setStrikeQty] = useState(0);
   const [voidQty, setVoidQty] = useState(0);
   const [vampirismQty, setVampirismQty] = useState(0);
@@ -121,19 +146,52 @@ export default function Home() {
 
   // PREÇOS DE CREATURE PRODUCTS (Valores Inabra em GP)
   // Strike
-  const [protectiveCharmPrice, setProtectiveCharmPrice] = useState(2500);
-  const [sabretoothPrice, setSabretoothPrice] = useState(4000);
-  const [vexclawTalonPrice, setVexclawTalonPrice] = useState(1000);
+  const [protectiveCharmPrice, setProtectiveCharmPrice] = useState(DEFAULT_IMBUEMENT_PRICES.protectiveCharmPrice);
+  const [sabretoothPrice, setSabretoothPrice] = useState(DEFAULT_IMBUEMENT_PRICES.sabretoothPrice);
+  const [vexclawTalonPrice, setVexclawTalonPrice] = useState(DEFAULT_IMBUEMENT_PRICES.vexclawTalonPrice);
 
   // Void
-  const [ropeBeltPrice, setRopeBeltPrice] = useState(2500);
-  const [silencerClawPrice, setSilencerClawPrice] = useState(3000);
-  const [grimeleechWingPrice, setGrimeleechWingPrice] = useState(1200);
+  const [ropeBeltPrice, setRopeBeltPrice] = useState(DEFAULT_IMBUEMENT_PRICES.ropeBeltPrice);
+  const [silencerClawPrice, setSilencerClawPrice] = useState(DEFAULT_IMBUEMENT_PRICES.silencerClawPrice);
+  const [grimeleechWingPrice, setGrimeleechWingPrice] = useState(DEFAULT_IMBUEMENT_PRICES.grimeleechWingPrice);
 
   // Vampirism
-  const [vampireTeethPrice, setVampireTeethPrice] = useState(2300);
-  const [bloodyPincerPrice, setBloodyPincerPrice] = useState(7000);
-  const [deadBrainPrice, setDeadBrainPrice] = useState(1200);
+  const [vampireTeethPrice, setVampireTeethPrice] = useState(DEFAULT_IMBUEMENT_PRICES.vampireTeethPrice);
+  const [bloodyPincerPrice, setBloodyPincerPrice] = useState(DEFAULT_IMBUEMENT_PRICES.bloodyPincerPrice);
+  const [deadBrainPrice, setDeadBrainPrice] = useState(DEFAULT_IMBUEMENT_PRICES.deadBrainPrice);
+
+  const imbuementPrices: ImbuementPrices = {
+    gtPrice,
+    protectiveCharmPrice,
+    sabretoothPrice,
+    vexclawTalonPrice,
+    ropeBeltPrice,
+    silencerClawPrice,
+    grimeleechWingPrice,
+    vampireTeethPrice,
+    bloodyPincerPrice,
+    deadBrainPrice,
+  };
+
+  const applyImbuementPrices = useCallback((savedPrices: Partial<ImbuementPrices>) => {
+    const getPrice = (key: keyof ImbuementPrices) => {
+      const price = savedPrices[key];
+      return typeof price === "number" && Number.isFinite(price) && price >= 0
+        ? price
+        : DEFAULT_IMBUEMENT_PRICES[key];
+    };
+
+    setGtPrice(getPrice("gtPrice"));
+    setProtectiveCharmPrice(getPrice("protectiveCharmPrice"));
+    setSabretoothPrice(getPrice("sabretoothPrice"));
+    setVexclawTalonPrice(getPrice("vexclawTalonPrice"));
+    setRopeBeltPrice(getPrice("ropeBeltPrice"));
+    setSilencerClawPrice(getPrice("silencerClawPrice"));
+    setGrimeleechWingPrice(getPrice("grimeleechWingPrice"));
+    setVampireTeethPrice(getPrice("vampireTeethPrice"));
+    setBloodyPincerPrice(getPrice("bloodyPincerPrice"));
+    setDeadBrainPrice(getPrice("deadBrainPrice"));
+  }, []);
 
   // Modais
   const [showSellModal, setShowSellModal] = useState(false);
@@ -166,6 +224,15 @@ export default function Home() {
 
   useEffect(() => {
     async function loadDataFromSupabase() {
+      try {
+        const cachedPrices = window.localStorage.getItem("tibia-imbuement-prices");
+        if (cachedPrices) {
+          applyImbuementPrices(JSON.parse(cachedPrices) as Partial<ImbuementPrices>);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar preços locais de imbuement:", err);
+      }
+
       if (!supabaseUrl || !supabaseAnonKey) {
         setIsLoaded(true);
         return;
@@ -192,6 +259,9 @@ export default function Home() {
           setHistory(data.history || []);
           setSoldTcTotal(Number(data.sold_tc_total) || 0);
           setSoldBrlTotal(Number(data.sold_brl_total) || 0);
+          if (data.imbuement_prices && typeof data.imbuement_prices === "object") {
+            applyImbuementPrices(data.imbuement_prices as Partial<ImbuementPrices>);
+          }
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
@@ -201,7 +271,40 @@ export default function Home() {
     }
 
     loadDataFromSupabase();
-  }, []);
+  }, [applyImbuementPrices]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    try {
+      window.localStorage.setItem("tibia-imbuement-prices", JSON.stringify({
+        gtPrice,
+        protectiveCharmPrice,
+        sabretoothPrice,
+        vexclawTalonPrice,
+        ropeBeltPrice,
+        silencerClawPrice,
+        grimeleechWingPrice,
+        vampireTeethPrice,
+        bloodyPincerPrice,
+        deadBrainPrice,
+      }));
+    } catch (err) {
+      console.error("Erro ao salvar preços locais de imbuement:", err);
+    }
+  }, [
+    isLoaded,
+    gtPrice,
+    protectiveCharmPrice,
+    sabretoothPrice,
+    vexclawTalonPrice,
+    ropeBeltPrice,
+    silencerClawPrice,
+    grimeleechWingPrice,
+    vampireTeethPrice,
+    bloodyPincerPrice,
+    deadBrainPrice,
+  ]);
 
   const saveDataToSupabase = async (
     newLoot: number,
@@ -215,12 +318,13 @@ export default function Home() {
     newPercentage: number = manualPercentage,
     newSoldTcTotal: number = soldTcTotal,
     newSoldBrlTotal: number = soldBrlTotal,
-    newCurrentExperience: number = currentExperience
+    newCurrentExperience: number = currentExperience,
+    newImbuementPrices: ImbuementPrices = imbuementPrices
   ) => {
     if (!supabaseUrl || !supabaseAnonKey) return;
 
     try {
-      await supabase.from("tibia_dashboard").upsert({
+      const dashboardData = {
         id: "main",
         loot: newLoot,
         supplies: newSupplies,
@@ -235,11 +339,44 @@ export default function Home() {
         history: newHistory,
         sold_tc_total: newSoldTcTotal,
         sold_brl_total: newSoldBrlTotal,
+        imbuement_prices: newImbuementPrices,
         updated_at: new Date().toISOString(),
-      });
+      };
+
+      const { error } = await supabase.from("tibia_dashboard").upsert(dashboardData);
+      if (error) {
+        const missingPricesColumn =
+          error.code === "PGRST204" || error.code === "42703" || error.message.includes("imbuement_prices");
+
+        if (!missingPricesColumn) throw error;
+
+        const legacyDashboardData = { ...dashboardData };
+        Reflect.deleteProperty(legacyDashboardData, "imbuement_prices");
+        const { error: legacyError } = await supabase.from("tibia_dashboard").upsert(legacyDashboardData);
+        if (legacyError) throw legacyError;
+        console.warn("A coluna imbuement_prices ainda não existe no Supabase; preços mantidos no navegador.");
+      }
     } catch (err) {
       console.error("Erro ao salvar no Supabase:", err);
     }
+  };
+
+  const persistImbuementPrices = () => {
+    void saveDataToSupabase(
+      loot,
+      supplies,
+      balance,
+      hunts,
+      tcPrice,
+      totalXpGained,
+      history,
+      currentLevel,
+      manualPercentage,
+      soldTcTotal,
+      soldBrlTotal,
+      currentExperience,
+      imbuementPrices
+    );
   };
 
   const applyImbuementDeduction = async () => {
@@ -302,7 +439,7 @@ export default function Home() {
       }
 
       clean = clean.replace(/[.,]/g, "");
-      let num = parseInt(clean, 10) || 0;
+      const num = parseInt(clean, 10) || 0;
 
       return isNegative ? -num : num;
     };
@@ -525,7 +662,6 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="my-3 flex justify-center items-center bg-[#0B1020] p-2 rounded-lg min-h-[140px] border border-slate-800">
               <div className="my-3 relative flex justify-center items-center bg-[#0B1020] p-2 rounded-lg min-h-[140px] border border-slate-800">
                 <img 
                   src={OUTFIT_IMAGE_URL} 
@@ -661,6 +797,7 @@ export default function Home() {
                 type="number"
                 value={gtPrice}
                 onChange={(e) => setGtPrice(Math.max(0, Number(e.target.value) || 0))}
+                onBlur={persistImbuementPrices}
                 className="bg-transparent text-right font-mono font-bold text-yellow-400 focus:outline-none w-28"
               />
             </div>
@@ -706,6 +843,7 @@ export default function Home() {
                       type="number"
                       value={protectiveCharmPrice}
                       onChange={(e) => setProtectiveCharmPrice(Number(e.target.value) || 0)}
+                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -715,6 +853,7 @@ export default function Home() {
                       type="number"
                       value={sabretoothPrice}
                       onChange={(e) => setSabretoothPrice(Number(e.target.value) || 0)}
+                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -724,6 +863,7 @@ export default function Home() {
                       type="number"
                       value={vexclawTalonPrice}
                       onChange={(e) => setVexclawTalonPrice(Number(e.target.value) || 0)}
+                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -780,6 +920,7 @@ export default function Home() {
                       type="number"
                       value={ropeBeltPrice}
                       onChange={(e) => setRopeBeltPrice(Number(e.target.value) || 0)}
+                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -789,6 +930,7 @@ export default function Home() {
                       type="number"
                       value={silencerClawPrice}
                       onChange={(e) => setSilencerClawPrice(Number(e.target.value) || 0)}
+                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -798,6 +940,7 @@ export default function Home() {
                       type="number"
                       value={grimeleechWingPrice}
                       onChange={(e) => setGrimeleechWingPrice(Number(e.target.value) || 0)}
+                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -854,6 +997,7 @@ export default function Home() {
                       type="number"
                       value={vampireTeethPrice}
                       onChange={(e) => setVampireTeethPrice(Number(e.target.value) || 0)}
+                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -863,6 +1007,7 @@ export default function Home() {
                       type="number"
                       value={bloodyPincerPrice}
                       onChange={(e) => setBloodyPincerPrice(Number(e.target.value) || 0)}
+                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -872,6 +1017,7 @@ export default function Home() {
                       type="number"
                       value={deadBrainPrice}
                       onChange={(e) => setDeadBrainPrice(Number(e.target.value) || 0)}
+                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
