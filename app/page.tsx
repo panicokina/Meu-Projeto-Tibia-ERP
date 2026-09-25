@@ -619,6 +619,11 @@ export default function Home() {
                   e.currentTarget.style.display = 'none';
                 }}
               />
+              <img
+                src="/Shrine.gif"
+                alt="Shrine"
+                className="w-10 h-10 shrink-0 object-contain"
+              />
               <div>
                 <h2 className="text-2xl font-bold text-cyan-400">Calculadora & Despesa de Imbuements</h2>
                 <p className="text-xs text-gray-400">Compare Gold Tokens vs. Produtos de Criatura em tempo real</p>
