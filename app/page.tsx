@@ -69,11 +69,12 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  // ÍCONES LOCAIS (Certifique-se de ter esses arquivos salvos dentro da pasta public/)
+  // ÍCONES LOCAIS (Na pasta public/)
   const POWERFUL_STRIKE_ICON = "/Powerful_Strike.png";
   const POWERFUL_VOID_ICON = "/Powerful_Void.png";
   const POWERFUL_VAMPIRISM_ICON = "/Powerful_Vampirism.png";
   const GOLD_TOKEN_ICON = "/Gold_Token.gif";
+  const SHRINE_ICON = "/Shrine_gif.gif"; // Adicionado
 
   const [charData] = useState({
     name: CHARACTER_NAME,
@@ -696,7 +697,10 @@ export default function Home() {
                     />
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
-                    <span className="text-gray-400">Taxa Shrine:</span>
+                    <span className="text-gray-400 flex items-center gap-1.5">
+                      <img src={SHRINE_ICON} alt="Shrine" className="w-4 h-4 object-contain inline-block" />
+                      Taxa Shrine:
+                    </span>
                     <span className="text-gray-300 font-mono">150.000 GP</span>
                   </div>
                 </div>
@@ -767,7 +771,10 @@ export default function Home() {
                     />
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
-                    <span className="text-gray-400">Taxa Shrine:</span>
+                    <span className="text-gray-400 flex items-center gap-1.5">
+                      <img src={SHRINE_ICON} alt="Shrine" className="w-4 h-4 object-contain inline-block" />
+                      Taxa Shrine:
+                    </span>
                     <span className="text-gray-300 font-mono">150.000 GP</span>
                   </div>
                 </div>
@@ -838,7 +845,10 @@ export default function Home() {
                     />
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
-                    <span className="text-gray-400">Taxa Shrine:</span>
+                    <span className="text-gray-400 flex items-center gap-1.5">
+                      <img src={SHRINE_ICON} alt="Shrine" className="w-4 h-4 object-contain inline-block" />
+                      Taxa Shrine:
+                    </span>
                     <span className="text-gray-300 font-mono">150.000 GP</span>
                   </div>
                 </div>
