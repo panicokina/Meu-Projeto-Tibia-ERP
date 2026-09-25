@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -101,6 +102,8 @@ export default function Home() {
 
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showLevelUpGif, setShowLevelUpGif] = useState(false);
+  const levelUpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -109,6 +112,12 @@ export default function Home() {
   const [strikeQty, setStrikeQty] = useState(0);
   const [voidQty, setVoidQty] = useState(0);
   const [vampirismQty, setVampirismQty] = useState(0);
+
+  useEffect(() => {
+    return () => {
+      if (levelUpTimeoutRef.current) clearTimeout(levelUpTimeoutRef.current);
+    };
+  }, []);
 
   // PREÇOS DE CREATURE PRODUCTS (Valores Inabra em GP)
   // Strike
@@ -325,6 +334,15 @@ export default function Home() {
     const updatedExperience = currentExperience + xpValue;
     const updatedProgress = progressFromExperience(updatedExperience);
 
+    if (updatedProgress.level > currentLevel) {
+      if (levelUpTimeoutRef.current) clearTimeout(levelUpTimeoutRef.current);
+      setShowLevelUpGif(true);
+      levelUpTimeoutRef.current = setTimeout(() => {
+        setShowLevelUpGif(false);
+        levelUpTimeoutRef.current = null;
+      }, 4000);
+    }
+
     const newHunt: Hunt = {
       id: Date.now(),
       date: new Date().toLocaleString("pt-BR"),
@@ -508,11 +526,19 @@ export default function Home() {
               </div>
 
               <div className="my-3 flex justify-center items-center bg-[#0B1020] p-2 rounded-lg min-h-[140px] border border-slate-800">
+              <div className="my-3 relative flex justify-center items-center bg-[#0B1020] p-2 rounded-lg min-h-[140px] border border-slate-800">
                 <img 
                   src={OUTFIT_IMAGE_URL} 
                   alt={`Foto do ${charData.name}`} 
                   className="h-36 object-contain rounded border border-yellow-500/20 shadow-md"
                 />
+                {showLevelUpGif && (
+                  <img
+                    src="/level.gif"
+                    alt="Level up!"
+                    className="pointer-events-none absolute top-1/2 left-1/2 z-10 h-36 w-36 -translate-x-1/2 -translate-y-1/2 object-contain"
+                  />
+                )}
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
