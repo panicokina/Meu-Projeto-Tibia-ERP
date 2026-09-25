@@ -74,7 +74,7 @@ export default function Home() {
   const POWERFUL_VOID_ICON = "/Powerful_Void.png";
   const POWERFUL_VAMPIRISM_ICON = "/Powerful_Vampirism.png";
   const GOLD_TOKEN_ICON = "/Gold_Token.gif";
-  const SHRINE_ICON = "/Shrine_gif.gif"; // Adicionado
+  const SHRINE_ICON = "/Shrine.gif"; // Apontando corretamente para o arquivo renomeado
 
   const [charData] = useState({
     name: CHARACTER_NAME,
