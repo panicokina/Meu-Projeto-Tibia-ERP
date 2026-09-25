@@ -69,11 +69,11 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  // ÍCONES OFICIAIS DO TIBIA WIKI / FANDOM PARA IMBUEMENTS
-  const POWERFUL_STRIKE_ICON = "https://tibia.fandom.com/wiki/Special:Redirect/file/Powerful_Strike.png";
-  const POWERFUL_VOID_ICON = "https://tibia.fandom.com/wiki/Special:Redirect/file/Powerful_Void.png";
-  const POWERFUL_VAMPIRISM_ICON = "https://tibia.fandom.com/wiki/Special:Redirect/file/Powerful_Vampirism.png";
-  const GOLD_TOKEN_ICON = "https://tibia.fandom.com/wiki/Special:Redirect/file/Gold_Token.png";
+  // URLS DIRETAS E ESTÁVEIS DOS ÍCONES PNG/GIF
+  const POWERFUL_STRIKE_ICON = "https://static.wikia.nocookie.net/tibia/images/a/a2/Powerful_Strike.png";
+  const POWERFUL_VOID_ICON = "https://static.wikia.nocookie.net/tibia/images/d/df/Powerful_Void.png";
+  const POWERFUL_VAMPIRISM_ICON = "https://static.wikia.nocookie.net/tibia/images/a/a7/Powerful_Vampirism.png";
+  const GOLD_TOKEN_ICON = "https://static.wikia.nocookie.net/tibia/images/6/60/Gold_Token.gif";
 
   const [charData] = useState({
     name: CHARACTER_NAME,
@@ -104,17 +104,31 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   // ESTADOS DA CALCULADORA DE IMBUEMENT
-  const [gtPrice, setGtPrice] = useState(47000); // Valor padrão do Gold Token em GP
-  const [marketScrollPrice, setMarketScrollPrice] = useState(580000); // Preço médio do scroll/itens no Market
+  const [gtPrice, setGtPrice] = useState(47000);
   const [strikeQty, setStrikeQty] = useState(0);
   const [voidQty, setVoidQty] = useState(0);
   const [vampirismQty, setVampirismQty] = useState(0);
 
-  // Modal Vender Tibia Coin
+  // PREÇOS DE CREATURE PRODUCTS (Valores Médios Inabra em GP)
+  // Strike
+  const [protectiveCharmPrice, setProtectiveCharmPrice] = useState(2500);
+  const [sabretoothPrice, setSabretoothPrice] = useState(4000);
+  const [vexclawTalonPrice, setVexclawTalonPrice] = useState(1000);
+
+  // Void
+  const [ropeBeltPrice, setRopeBeltPrice] = useState(2500);
+  const [silencerClawPrice, setSilencerClawPrice] = useState(3000);
+  const [grimeleechWingPrice, setGrimeleechWingPrice] = useState(1200);
+
+  // Vampirism
+  const [vampireTeethPrice, setVampireTeethPrice] = useState(2300);
+  const [bloodyPincerPrice, setBloodyPincerPrice] = useState(7000);
+  const [deadBrainPrice, setDeadBrainPrice] = useState(1200);
+
+  // Modais
   const [showSellModal, setShowSellModal] = useState(false);
   const [tcToSellInput, setTcToSellInput] = useState("");
 
-  // Modal de Autenticação
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authUsername, setAuthUsername] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -124,13 +138,21 @@ export default function Home() {
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
   const realMoney = tibiaCoins * (50 / 250);
 
-  // CÁLCULOS DE IMBUEMENT
+  // CÁLCULOS DE CUSTO INDIVIDUAL DOS ITENS + SHRINE TAXA DE 150k
+  const strikeItemCost = (20 * protectiveCharmPrice) + (25 * sabretoothPrice) + (5 * vexclawTalonPrice) + 150000;
+  const voidItemCost = (25 * ropeBeltPrice) + (25 * silencerClawPrice) + (5 * grimeleechWingPrice) + 150000;
+  const vampirismItemCost = (25 * vampireTeethPrice) + (25 * bloodyPincerPrice) + (5 * deadBrainPrice) + 150000;
+
+  // CUSTO POR GOLD TOKEN (6 GTs + 250k taxa shrine)
+  const gtFeePerImbuement = (6 * gtPrice) + 250000;
+
+  // CUSTOS TOTALIZADOS BASEADOS NA QUANTIDADE SELECIONADA
+  const totalCostGT = (strikeQty + voidQty + vampirismQty) * gtFeePerImbuement;
+  const totalCostItems = (strikeQty * strikeItemCost) + (voidQty * voidItemCost) + (vampirismQty * vampirismItemCost);
+
   const totalImbuementsSelected = strikeQty + voidQty + vampirismQty;
-  const gtFeePerImbuement = (6 * gtPrice) + 250000; // 6 GTs + 250k de taxa de shrine
-  const totalCostGT = totalImbuementsSelected * gtFeePerImbuement;
-  const totalCostMarket = totalImbuementsSelected * marketScrollPrice;
-  const isGtCheaper = totalCostGT <= totalCostMarket;
-  const bestTotalCost = Math.min(totalCostGT, totalCostMarket);
+  const isGtCheaper = totalCostGT <= totalCostItems;
+  const bestTotalCost = totalImbuementsSelected > 0 ? (isGtCheaper ? totalCostGT : totalCostItems) : 0;
 
   useEffect(() => {
     async function loadDataFromSupabase() {
@@ -210,15 +232,13 @@ export default function Home() {
     }
   };
 
-  // ABATER CUSTO DE IMBUEMENT DO SALDO
   const applyImbuementDeduction = async () => {
     if (totalImbuementsSelected <= 0) {
-      alert("Selecione a quantidade de imbuements a serem renovados.");
+      alert("Selecione ao menos 1 imbuement para renovar.");
       return;
     }
 
-    const costToDeduct = isGtCheaper ? totalCostGT : totalCostMarket;
-    const updatedBalance = balance - costToDeduct;
+    const updatedBalance = balance - bestTotalCost;
 
     setBalance(updatedBalance);
     setStrikeQty(0);
@@ -240,7 +260,7 @@ export default function Home() {
       currentExperience
     );
 
-    alert(`Despesa de Imbuement de ${costToDeduct.toLocaleString("pt-BR")} GP abatida do Saldo Consolidado com sucesso!`);
+    alert(`Despesa de Imbuement de ${bestTotalCost.toLocaleString("pt-BR")} GP abatida do Saldo e das TCs com sucesso!`);
   };
 
   function importHunt() {
@@ -526,7 +546,6 @@ export default function Home() {
 
           {/* MÉTRICAS */}
           <div className="xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            
             <div className="bg-[#151B31] p-5 rounded-xl flex flex-col justify-center">
               <h2 className="text-gray-400 text-sm mb-1">Saldo Consolidado</h2>
               <div className="flex items-center gap-2">
@@ -587,126 +606,251 @@ export default function Home() {
 
         </div>
 
-        {/* NEW: CARD CALCULADORA & ABATIMENTO DE IMBUEMENT */}
+        {/* MÓDULO CALCULADORA DE IMBUEMENT & COMPARADOR DETALHADO */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl border border-cyan-500/30">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <img src={GOLD_TOKEN_ICON} alt="Gold Token" className="w-8 h-8 object-contain" />
-              <h2 className="text-2xl font-bold text-cyan-400">Calculadora & Despesa de Imbuements</h2>
-            </div>
-            <span className="text-xs text-gray-400">Compara Gold Tokens vs. Market/Creature Products</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            {/* SELEÇÃO DE IMBUEMENTS COM PNGs DO TIBIA WIKI */}
-            <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={POWERFUL_STRIKE_ICON} alt="Powerful Strike" className="w-10 h-10 object-contain" />
-                <div>
-                  <h3 className="font-bold text-yellow-400 text-sm">Powerful Strike</h3>
-                  <p className="text-[10px] text-gray-400">Crit (+30%)</p>
-                </div>
+              <div>
+                <h2 className="text-2xl font-bold text-cyan-400">Calculadora & Despesa de Imbuements</h2>
+                <p className="text-xs text-gray-400">Compare Gold Tokens vs. Produtos de Criatura em tempo real</p>
               </div>
-              <input
-                type="number"
-                min="0"
-                value={strikeQty}
-                onChange={(e) => setStrikeQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                className="w-16 bg-[#151B31] p-2 rounded border border-slate-700 text-center text-white font-mono"
-              />
             </div>
-
-            <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={POWERFUL_VOID_ICON} alt="Powerful Void" className="w-10 h-10 object-contain" />
-                <div>
-                  <h3 className="font-bold text-cyan-400 text-sm">Powerful Void</h3>
-                  <p className="text-[10px] text-gray-400">Mana Leech (+8%)</p>
-                </div>
-              </div>
-              <input
-                type="number"
-                min="0"
-                value={voidQty}
-                onChange={(e) => setVoidQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                className="w-16 bg-[#151B31] p-2 rounded border border-slate-700 text-center text-white font-mono"
-              />
-            </div>
-
-            <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={POWERFUL_VAMPIRISM_ICON} alt="Powerful Vampirism" className="w-10 h-10 object-contain" />
-                <div>
-                  <h3 className="font-bold text-red-400 text-sm">Powerful Vampirism</h3>
-                  <p className="text-[10px] text-gray-400">Life Leech (+25%)</p>
-                </div>
-              </div>
-              <input
-                type="number"
-                min="0"
-                value={vampirismQty}
-                onChange={(e) => setVampirismQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                className="w-16 bg-[#151B31] p-2 rounded border border-slate-700 text-center text-white font-mono"
-              />
-            </div>
-          </div>
-
-          {/* COTAÇÕES E ANÁLISE "VALE A PENA?" */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-[#0B1020] p-4 rounded-lg border border-slate-800">
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">
-                Preço Atual do Gold Token (GP)
-              </label>
+            <div className="bg-[#0B1020] px-4 py-2 rounded border border-slate-700 text-right">
+              <label className="block text-[11px] text-gray-400">Preço Gold Token (GP):</label>
               <input
                 type="number"
                 value={gtPrice}
                 onChange={(e) => setGtPrice(Math.max(0, Number(e.target.value) || 0))}
-                className="w-full bg-[#151B31] p-2.5 rounded border border-slate-700 focus:outline-none focus:border-cyan-400 font-mono text-sm"
+                className="bg-transparent text-right font-mono font-bold text-yellow-400 focus:outline-none w-28"
               />
-              <p className="text-[11px] text-gray-400 mt-1">
-                Custo GT (6 GTs + 250k taxa): <span className="text-yellow-400 font-mono">{gtFeePerImbuement.toLocaleString("pt-BR")} GP</span> / imbuement
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">
-                Preço do Scroll/Itens no Market (GP)
-              </label>
-              <input
-                type="number"
-                value={marketScrollPrice}
-                onChange={(e) => setMarketScrollPrice(Math.max(0, Number(e.target.value) || 0))}
-                className="w-full bg-[#151B31] p-2.5 rounded border border-slate-700 focus:outline-none focus:border-cyan-400 font-mono text-sm"
-              />
-              <p className="text-[11px] text-gray-400 mt-1">
-                Custo no Market: <span className="text-yellow-400 font-mono">{marketScrollPrice.toLocaleString("pt-BR")} GP</span> / imbuement
-              </p>
             </div>
           </div>
 
-          {/* PAINEL DE DECISÃO E ABATIMENTO */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-[#151B31] p-4 rounded-lg border border-slate-700">
+          {/* GRID COM OS 3 IMBUEMENTS E SEUS RESPECTIVOS PRODUTOS DE CRIATURA */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            
+            {/* POWERFUL STRIKE (CRÍTICO) */}
+            <div className="bg-[#0B1020] p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <img src={POWERFUL_STRIKE_ICON} alt="Powerful Strike" className="w-8 h-8 object-contain" />
+                    <div>
+                      <h3 className="font-bold text-yellow-400 text-sm">Powerful Strike</h3>
+                      <p className="text-[10px] text-gray-400">Crit (+30%)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">Qtd:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={strikeQty}
+                      onChange={(e) => setStrikeQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-12 bg-[#151B31] p-1 text-center rounded border border-slate-700 text-white font-mono text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">20x Protective Charm</span>
+                    <input
+                      type="number"
+                      value={protectiveCharmPrice}
+                      onChange={(e) => setProtectiveCharmPrice(Number(e.target.value) || 0)}
+                      className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">25x Sabretooth</span>
+                    <input
+                      type="number"
+                      value={sabretoothPrice}
+                      onChange={(e) => setSabretoothPrice(Number(e.target.value) || 0)}
+                      className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">5x Vexclaw Talon</span>
+                    <input
+                      type="number"
+                      value={vexclawTalonPrice}
+                      onChange={(e) => setVexclawTalonPrice(Number(e.target.value) || 0)}
+                      className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
+                    <span className="text-gray-400">Taxa Shrine:</span>
+                    <span className="text-gray-300 font-mono">150.000 GP</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+                <span className="text-gray-400">Custo Total Itens:</span>
+                <span className="font-mono font-bold text-emerald-400">{strikeItemCost.toLocaleString("pt-BR")} GP</span>
+              </div>
+            </div>
+
+            {/* POWERFUL VOID (MANA) */}
+            <div className="bg-[#0B1020] p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <img src={POWERFUL_VOID_ICON} alt="Powerful Void" className="w-8 h-8 object-contain" />
+                    <div>
+                      <h3 className="font-bold text-cyan-400 text-sm">Powerful Void</h3>
+                      <p className="text-[10px] text-gray-400">Mana Leech (+8%)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">Qtd:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={voidQty}
+                      onChange={(e) => setVoidQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-12 bg-[#151B31] p-1 text-center rounded border border-slate-700 text-white font-mono text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">25x Rope Belt</span>
+                    <input
+                      type="number"
+                      value={ropeBeltPrice}
+                      onChange={(e) => setRopeBeltPrice(Number(e.target.value) || 0)}
+                      className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">25x Silencer Claw</span>
+                    <input
+                      type="number"
+                      value={silencerClawPrice}
+                      onChange={(e) => setSilencerClawPrice(Number(e.target.value) || 0)}
+                      className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">5x Grimeleech Wing</span>
+                    <input
+                      type="number"
+                      value={grimeleechWingPrice}
+                      onChange={(e) => setGrimeleechWingPrice(Number(e.target.value) || 0)}
+                      className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
+                    <span className="text-gray-400">Taxa Shrine:</span>
+                    <span className="text-gray-300 font-mono">150.000 GP</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+                <span className="text-gray-400">Custo Total Itens:</span>
+                <span className="font-mono font-bold text-emerald-400">{voidItemCost.toLocaleString("pt-BR")} GP</span>
+              </div>
+            </div>
+
+            {/* POWERFUL VAMPIRISM (LIFE) */}
+            <div className="bg-[#0B1020] p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <img src={POWERFUL_VAMPIRISM_ICON} alt="Powerful Vampirism" className="w-8 h-8 object-contain" />
+                    <div>
+                      <h3 className="font-bold text-red-400 text-sm">Powerful Vampirism</h3>
+                      <p className="text-[10px] text-gray-400">Life Leech (+25%)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">Qtd:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={vampirismQty}
+                      onChange={(e) => setVampirismQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-12 bg-[#151B31] p-1 text-center rounded border border-slate-700 text-white font-mono text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">25x Vampire Teeth</span>
+                    <input
+                      type="number"
+                      value={vampireTeethPrice}
+                      onChange={(e) => setVampireTeethPrice(Number(e.target.value) || 0)}
+                      className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">25x Bloody Pincer</span>
+                    <input
+                      type="number"
+                      value={bloodyPincerPrice}
+                      onChange={(e) => setBloodyPincerPrice(Number(e.target.value) || 0)}
+                      className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">5x Dead Brain</span>
+                    <input
+                      type="number"
+                      value={deadBrainPrice}
+                      onChange={(e) => setDeadBrainPrice(Number(e.target.value) || 0)}
+                      className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
+                    <span className="text-gray-400">Taxa Shrine:</span>
+                    <span className="text-gray-300 font-mono">150.000 GP</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+                <span className="text-gray-400">Custo Total Itens:</span>
+                <span className="font-mono font-bold text-emerald-400">{vampirismItemCost.toLocaleString("pt-BR")} GP</span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* DICA DE ECONOMIA E BOTÃO DE ABATIMENTO */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-[#0B1020] p-4 rounded-xl border border-slate-800">
             <div>
-              <p className="text-xs text-gray-400 mb-1">Análise de Custo ({totalImbuementsSelected} imbuements):</p>
-              <p className="text-lg font-bold">
-                {isGtCheaper ? (
-                  <span className="text-emerald-400">💡 Compensa usar Gold Tokens! ({totalCostGT.toLocaleString("pt-BR")} GP)</span>
+              <p className="text-xs text-gray-400 mb-1">
+                Comparativo de Custo Total ({totalImbuementsSelected} imbuement{totalImbuementsSelected !== 1 ? "s" : ""}):
+              </p>
+              <div className="flex items-center gap-4 text-sm">
+                <span>Via GT (6x + 250k): <strong className="text-yellow-400 font-mono">{totalCostGT.toLocaleString("pt-BR")} GP</strong></span>
+                <span>•</span>
+                <span>Via Itens de Criatura: <strong className="text-emerald-400 font-mono">{totalCostItems.toLocaleString("pt-BR")} GP</strong></span>
+              </div>
+              <p className="text-sm font-bold mt-1">
+                {totalImbuementsSelected === 0 ? (
+                  <span className="text-gray-400">Selecione ao menos 1 imbuement acima para comparar.</span>
+                ) : isGtCheaper ? (
+                  <span className="text-yellow-400">💡 Vale mais a pena usar Gold Tokens! (Economia de {Math.abs(totalCostItems - totalCostGT).toLocaleString("pt-BR")} GP)</span>
                 ) : (
-                  <span className="text-yellow-400">💡 Compensa comprar no Market! ({totalCostMarket.toLocaleString("pt-BR")} GP)</span>
+                  <span className="text-emerald-400">💡 Vale mais a pena comprar Produtos de Criatura! (Economia de {Math.abs(totalCostGT - totalCostItems).toLocaleString("pt-BR")} GP)</span>
                 )}
               </p>
-              {totalImbuementsSelected > 0 && (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Economia estimada de <span className="text-emerald-400 font-mono">{Math.abs(totalCostGT - totalCostMarket).toLocaleString("pt-BR")} GP</span>
-                </p>
-              )}
             </div>
 
             <button
               onClick={applyImbuementDeduction}
               className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-3 rounded-lg font-bold transition shadow-lg flex items-center gap-2 whitespace-nowrap"
             >
-              Abater Despesa do Saldo Consolidado ({bestTotalCost.toLocaleString("pt-BR")} GP)
+              Abater Despesa ({bestTotalCost.toLocaleString("pt-BR")} GP)
             </button>
           </div>
         </div>
