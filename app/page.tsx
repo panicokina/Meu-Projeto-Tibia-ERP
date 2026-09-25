@@ -69,11 +69,11 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  // URLS DIRETAS E ESTÁVEIS DOS ÍCONES PNG/GIF
-  const POWERFUL_STRIKE_ICON = "https://static.wikia.nocookie.net/tibia/images/a/a2/Powerful_Strike.png";
-  const POWERFUL_VOID_ICON = "https://static.wikia.nocookie.net/tibia/images/d/df/Powerful_Void.png";
-  const POWERFUL_VAMPIRISM_ICON = "https://static.wikia.nocookie.net/tibia/images/a/a7/Powerful_Vampirism.png";
-  const GOLD_TOKEN_ICON = "https://static.wikia.nocookie.net/tibia/images/6/60/Gold_Token.gif";
+  // ÍCONES OFICIAIS COM SUPORTE A DIRETO DA WIKI SEM BLOQUEIO DE REFERRER
+  const POWERFUL_STRIKE_ICON = "https://tibia.fandom.com/wiki/Special:FilePath/Powerful_Strike.png";
+  const POWERFUL_VOID_ICON = "https://tibia.fandom.com/wiki/Special:FilePath/Powerful_Void.png";
+  const POWERFUL_VAMPIRISM_ICON = "https://tibia.fandom.com/wiki/Special:FilePath/Powerful_Vampirism.png";
+  const GOLD_TOKEN_ICON = "https://tibia.fandom.com/wiki/Special:FilePath/Gold_Token.gif";
 
   const [charData] = useState({
     name: CHARACTER_NAME,
@@ -109,7 +109,7 @@ export default function Home() {
   const [voidQty, setVoidQty] = useState(0);
   const [vampirismQty, setVampirismQty] = useState(0);
 
-  // PREÇOS DE CREATURE PRODUCTS (Valores Médios Inabra em GP)
+  // PREÇOS DE CREATURE PRODUCTS (Valores Inabra em GP)
   // Strike
   const [protectiveCharmPrice, setProtectiveCharmPrice] = useState(2500);
   const [sabretoothPrice, setSabretoothPrice] = useState(4000);
@@ -610,7 +610,12 @@ export default function Home() {
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl border border-cyan-500/30">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <img src={GOLD_TOKEN_ICON} alt="Gold Token" className="w-8 h-8 object-contain" />
+              <img 
+                src={GOLD_TOKEN_ICON} 
+                alt="Gold Token" 
+                referrerPolicy="no-referrer"
+                className="w-8 h-8 object-contain" 
+              />
               <div>
                 <h2 className="text-2xl font-bold text-cyan-400">Calculadora & Despesa de Imbuements</h2>
                 <p className="text-xs text-gray-400">Compare Gold Tokens vs. Produtos de Criatura em tempo real</p>
@@ -635,7 +640,12 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <img src={POWERFUL_STRIKE_ICON} alt="Powerful Strike" className="w-8 h-8 object-contain" />
+                    <img 
+                      src={POWERFUL_STRIKE_ICON} 
+                      alt="Powerful Strike" 
+                      referrerPolicy="no-referrer"
+                      className="w-8 h-8 object-contain" 
+                    />
                     <div>
                       <h3 className="font-bold text-yellow-400 text-sm">Powerful Strike</h3>
                       <p className="text-[10px] text-gray-400">Crit (+30%)</p>
@@ -699,7 +709,12 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <img src={POWERFUL_VOID_ICON} alt="Powerful Void" className="w-8 h-8 object-contain" />
+                    <img 
+                      src={POWERFUL_VOID_ICON} 
+                      alt="Powerful Void" 
+                      referrerPolicy="no-referrer"
+                      className="w-8 h-8 object-contain" 
+                    />
                     <div>
                       <h3 className="font-bold text-cyan-400 text-sm">Powerful Void</h3>
                       <p className="text-[10px] text-gray-400">Mana Leech (+8%)</p>
@@ -763,7 +778,12 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <img src={POWERFUL_VAMPIRISM_ICON} alt="Powerful Vampirism" className="w-8 h-8 object-contain" />
+                    <img 
+                      src={POWERFUL_VAMPIRISM_ICON} 
+                      alt="Powerful Vampirism" 
+                      referrerPolicy="no-referrer"
+                      className="w-8 h-8 object-contain" 
+                    />
                     <div>
                       <h3 className="font-bold text-red-400 text-sm">Powerful Vampirism</h3>
                       <p className="text-[10px] text-gray-400">Life Leech (+25%)</p>
