@@ -69,11 +69,11 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  // ÍCONES OFICIAIS COM SUPORTE A DIRETO DA WIKI SEM BLOQUEIO DE REFERRER
-  const POWERFUL_STRIKE_ICON = "https://tibia.fandom.com/wiki/Special:FilePath/Powerful_Strike.png";
-  const POWERFUL_VOID_ICON = "https://tibia.fandom.com/wiki/Special:FilePath/Powerful_Void.png";
-  const POWERFUL_VAMPIRISM_ICON = "https://tibia.fandom.com/wiki/Special:FilePath/Powerful_Vampirism.png";
-  const GOLD_TOKEN_ICON = "https://tibia.fandom.com/wiki/Special:FilePath/Gold_Token.gif";
+  // ÍCONES LOCAIS (Coloque os arquivos na pasta public/ do projeto Next.js)
+  const POWERFUL_STRIKE_ICON = "/Powerful_Strike.png";
+  const POWERFUL_VOID_ICON = "/Powerful_Void.png";
+  const POWERFUL_VAMPIRISM_ICON = "/Powerful_Vampirism.png";
+  const GOLD_TOKEN_ICON = "/Gold_Token.gif";
 
   const [charData] = useState({
     name: CHARACTER_NAME,
@@ -610,12 +610,17 @@ export default function Home() {
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl border border-cyan-500/30">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <img 
-                src={GOLD_TOKEN_ICON} 
-                alt="Gold Token" 
-                referrerPolicy="no-referrer"
-                className="w-8 h-8 object-contain" 
-              />
+              <div className="w-8 h-8 rounded bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center overflow-hidden">
+                <img 
+                  src={GOLD_TOKEN_ICON} 
+                  alt="Gold Token" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    // Fallback visual caso a imagem na pasta public ainda não tenha sido colocada
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
               <div>
                 <h2 className="text-2xl font-bold text-cyan-400">Calculadora & Despesa de Imbuements</h2>
                 <p className="text-xs text-gray-400">Compare Gold Tokens vs. Produtos de Criatura em tempo real</p>
@@ -640,12 +645,16 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <img 
-                      src={POWERFUL_STRIKE_ICON} 
-                      alt="Powerful Strike" 
-                      referrerPolicy="no-referrer"
-                      className="w-8 h-8 object-contain" 
-                    />
+                    <div className="w-8 h-8 rounded bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={POWERFUL_STRIKE_ICON} 
+                        alt="Powerful Strike" 
+                        className="w-full h-full object-contain" 
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
                     <div>
                       <h3 className="font-bold text-yellow-400 text-sm">Powerful Strike</h3>
                       <p className="text-[10px] text-gray-400">Crit (+30%)</p>
@@ -709,12 +718,16 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <img 
-                      src={POWERFUL_VOID_ICON} 
-                      alt="Powerful Void" 
-                      referrerPolicy="no-referrer"
-                      className="w-8 h-8 object-contain" 
-                    />
+                    <div className="w-8 h-8 rounded bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={POWERFUL_VOID_ICON} 
+                        alt="Powerful Void" 
+                        className="w-full h-full object-contain" 
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
                     <div>
                       <h3 className="font-bold text-cyan-400 text-sm">Powerful Void</h3>
                       <p className="text-[10px] text-gray-400">Mana Leech (+8%)</p>
@@ -778,12 +791,16 @@ export default function Home() {
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <img 
-                      src={POWERFUL_VAMPIRISM_ICON} 
-                      alt="Powerful Vampirism" 
-                      referrerPolicy="no-referrer"
-                      className="w-8 h-8 object-contain" 
-                    />
+                    <div className="w-8 h-8 rounded bg-red-500/10 border border-red-500/30 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={POWERFUL_VAMPIRISM_ICON} 
+                        alt="Powerful Vampirism" 
+                        className="w-full h-full object-contain" 
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
                     <div>
                       <h3 className="font-bold text-red-400 text-sm">Powerful Vampirism</h3>
                       <p className="text-[10px] text-gray-400">Life Leech (+25%)</p>
