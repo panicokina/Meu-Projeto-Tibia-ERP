@@ -74,7 +74,7 @@ export default function Home() {
   const POWERFUL_VOID_ICON = "/Powerful_Void.png";
   const POWERFUL_VAMPIRISM_ICON = "/Powerful_Vampirism.png";
   const GOLD_TOKEN_ICON = "/Gold_Token.gif";
-  const SHRINE_ICON = "/Shrine.gif"; // Apontando corretamente para o arquivo renomeado
+  const SHRINE_ICON = "/Shrine.gif";
 
   const [charData] = useState({
     name: CHARACTER_NAME,
@@ -698,7 +698,7 @@ export default function Home() {
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
                     <span className="text-gray-400 flex items-center gap-1.5">
-                      <img src={SHRINE_ICON} alt="Shrine" className="w-4 h-4 object-contain inline-block" />
+                      <img src={SHRINE_ICON} alt="Shrine" className="w-5 h-5 object-contain" />
                       Taxa Shrine:
                     </span>
                     <span className="text-gray-300 font-mono">150.000 GP</span>
@@ -772,7 +772,7 @@ export default function Home() {
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
                     <span className="text-gray-400 flex items-center gap-1.5">
-                      <img src={SHRINE_ICON} alt="Shrine" className="w-4 h-4 object-contain inline-block" />
+                      <img src={SHRINE_ICON} alt="Shrine" className="w-5 h-5 object-contain" />
                       Taxa Shrine:
                     </span>
                     <span className="text-gray-300 font-mono">150.000 GP</span>
@@ -846,7 +846,7 @@ export default function Home() {
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
                     <span className="text-gray-400 flex items-center gap-1.5">
-                      <img src={SHRINE_ICON} alt="Shrine" className="w-4 h-4 object-contain inline-block" />
+                      <img src={SHRINE_ICON} alt="Shrine" className="w-5 h-5 object-contain" />
                       Taxa Shrine:
                     </span>
                     <span className="text-gray-300 font-mono">150.000 GP</span>
