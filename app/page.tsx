@@ -1299,9 +1299,9 @@ export default function Home() {
               </button>
               <button
                 onClick={confirmSellTc}
-                className="bg-yellow-500 text-black px-6 py-2 rounded font-bold text-sm hover:bg-yellow-400 transition"
+                className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-2 rounded font-bold transition text-sm"
               >
-                Lançar e Resetar Saldos
+                Confirmar Venda
               </button>
             </div>
           </div>
