@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -43,47 +43,6 @@ const DEFAULT_IMBUEMENT_PRICES: ImbuementPrices = {
   deadBrainPrice: 1200,
 };
 
-// Fórmula oficial do Tibia: experiência total necessária para atingir um level.
-const experienceForLevel = (level: number) => {
-  const formulaLevel = Math.max(0, level - 1);
-  return Math.floor(
-    (50 * formulaLevel ** 3 - 150 * formulaLevel ** 2 + 400 * formulaLevel) / 3
-  );
-};
-
-const progressFromExperience = (experience: number) => {
-  const safeExperience = Math.max(0, experience);
-  let lowerLevel = 1;
-  let upperLevel = 2;
-
-  while (experienceForLevel(upperLevel) <= safeExperience) {
-    lowerLevel = upperLevel;
-    upperLevel *= 2;
-  }
-
-  while (lowerLevel + 1 < upperLevel) {
-    const middleLevel = Math.floor((lowerLevel + upperLevel) / 2);
-
-    if (experienceForLevel(middleLevel) <= safeExperience) {
-      lowerLevel = middleLevel;
-    } else {
-      upperLevel = middleLevel;
-    }
-  }
-
-  const levelExperience = experienceForLevel(lowerLevel);
-  const nextLevelExperience = experienceForLevel(lowerLevel + 1);
-  const percentage =
-    ((safeExperience - levelExperience) /
-      (nextLevelExperience - levelExperience)) *
-    100;
-
-  return {
-    level: lowerLevel,
-    percentage: Number(Math.min(100, Math.max(0, percentage)).toFixed(4)),
-  };
-};
-
 export default function Home() {
   const CHARACTER_NAME = "Greey Kina";
   const OUTFIT_IMAGE_URL = "/greey-kina.png";
@@ -95,23 +54,18 @@ export default function Home() {
   const GREAT_MANA_POTION_ICON = "/Great_Mana_Potion.gif";
   const REALITY_REAVER_ICON = "/Reality_Reaver.gif";
 
-  // ÍCONES LOCAIS (Na pasta public/)
   const POWERFUL_STRIKE_ICON = "/Powerful_Strike.png";
   const POWERFUL_VOID_ICON = "/Powerful_Void.png";
   const POWERFUL_VAMPIRISM_ICON = "/Powerful_Vampirism.png";
   const GOLD_TOKEN_ICON = "/Gold_Token.gif";
   const SHRINE_ICON = "/Shrine.gif";
 
-  const [charData] = useState({
+  const [charData, setCharData] = useState({
     name: CHARACTER_NAME,
     vocation: "Elite Knight",
     world: "Inabra",
+    level: 687, // Valor padrão caso a API demore ou falhe
   });
-
-  const [currentExperience, setCurrentExperience] = useState<number>(5_277_341_338);
-  const currentProgress = progressFromExperience(currentExperience);
-  const currentLevel = currentProgress.level;
-  const manualPercentage = currentProgress.percentage;
 
   const [analyzer, setAnalyzer] = useState("");
   const [tcPrice, setTcPrice] = useState(42500);
@@ -127,8 +81,6 @@ export default function Home() {
 
   const [history, setHistory] = useState<Hunt[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [showLevelUpGif, setShowLevelUpGif] = useState(false);
-  const levelUpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -138,24 +90,14 @@ export default function Home() {
   const [voidQty, setVoidQty] = useState(0);
   const [vampirismQty, setVampirismQty] = useState(0);
 
-  useEffect(() => {
-    return () => {
-      if (levelUpTimeoutRef.current) clearTimeout(levelUpTimeoutRef.current);
-    };
-  }, []);
-
-  // PREÇOS DE CREATURE PRODUCTS (Valores Inabra em GP)
-  // Strike
   const [protectiveCharmPrice, setProtectiveCharmPrice] = useState(DEFAULT_IMBUEMENT_PRICES.protectiveCharmPrice);
   const [sabretoothPrice, setSabretoothPrice] = useState(DEFAULT_IMBUEMENT_PRICES.sabretoothPrice);
   const [vexclawTalonPrice, setVexclawTalonPrice] = useState(DEFAULT_IMBUEMENT_PRICES.vexclawTalonPrice);
 
-  // Void
   const [ropeBeltPrice, setRopeBeltPrice] = useState(DEFAULT_IMBUEMENT_PRICES.ropeBeltPrice);
   const [silencerClawPrice, setSilencerClawPrice] = useState(DEFAULT_IMBUEMENT_PRICES.silencerClawPrice);
   const [grimeleechWingPrice, setGrimeleechWingPrice] = useState(DEFAULT_IMBUEMENT_PRICES.grimeleechWingPrice);
 
-  // Vampirism
   const [vampireTeethPrice, setVampireTeethPrice] = useState(DEFAULT_IMBUEMENT_PRICES.vampireTeethPrice);
   const [bloodyPincerPrice, setBloodyPincerPrice] = useState(DEFAULT_IMBUEMENT_PRICES.bloodyPincerPrice);
   const [deadBrainPrice, setDeadBrainPrice] = useState(DEFAULT_IMBUEMENT_PRICES.deadBrainPrice);
@@ -173,26 +115,6 @@ export default function Home() {
     deadBrainPrice,
   };
 
-  const applyImbuementPrices = useCallback((savedPrices: Partial<ImbuementPrices>) => {
-    const getPrice = (key: keyof ImbuementPrices) => {
-      const price = savedPrices[key];
-      return typeof price === "number" && Number.isFinite(price) && price >= 0
-        ? price
-        : DEFAULT_IMBUEMENT_PRICES[key];
-    };
-
-    setGtPrice(getPrice("gtPrice"));
-    setProtectiveCharmPrice(getPrice("protectiveCharmPrice"));
-    setSabretoothPrice(getPrice("sabretoothPrice"));
-    setVexclawTalonPrice(getPrice("vexclawTalonPrice"));
-    setRopeBeltPrice(getPrice("ropeBeltPrice"));
-    setSilencerClawPrice(getPrice("silencerClawPrice"));
-    setGrimeleechWingPrice(getPrice("grimeleechWingPrice"));
-    setVampireTeethPrice(getPrice("vampireTeethPrice"));
-    setBloodyPincerPrice(getPrice("bloodyPincerPrice"));
-    setDeadBrainPrice(getPrice("deadBrainPrice"));
-  }, []);
-
   // Modais
   const [showSellModal, setShowSellModal] = useState(false);
   const [tcToSellInput, setTcToSellInput] = useState("");
@@ -206,12 +128,9 @@ export default function Home() {
   const tibiaCoins = tcPrice > 0 ? balance / tcPrice : 0;
   const realMoney = tibiaCoins * (50 / 250);
 
-  // CÁLCULOS DE CUSTO INDIVIDUAL DOS ITENS + SHRINE TAXA DE 150k
   const strikeItemCost = (20 * protectiveCharmPrice) + (25 * sabretoothPrice) + (5 * vexclawTalonPrice) + 150000;
   const voidItemCost = (25 * ropeBeltPrice) + (25 * silencerClawPrice) + (5 * grimeleechWingPrice) + 150000;
   const vampirismItemCost = (25 * vampireTeethPrice) + (25 * bloodyPincerPrice) + (5 * deadBrainPrice) + 150000;
-
-  // CUSTO POR GOLD TOKEN (6 GTs + 250k taxa shrine)
   const gtFeePerImbuement = (6 * gtPrice) + 250000;
 
   const imbuementComparisons = [
@@ -238,15 +157,37 @@ export default function Home() {
     0
   );
 
+  // BUSCAR DADOS DO SUPABASE E DA API DO TIBIA AUTOMATICAMENTE
   useEffect(() => {
-    async function loadDataFromSupabase() {
+    async function loadAllData() {
+      // 1. Buscar Level Atual na API Oficial do Tibia (TibiaData v4)
+      try {
+        const encodedName = encodeURIComponent(CHARACTER_NAME);
+        const response = await fetch(`https://api.tibiadata.com/v4/character/${encodedName}`);
+        const json = await response.json();
+        
+        if (json && json.characters && json.characters.data && json.characters.data.character) {
+          const charInfo = json.characters.data.character;
+          setCharData({
+            name: charInfo.name || CHARACTER_NAME,
+            vocation: charInfo.vocation || "Elite Knight",
+            world: charInfo.world || "Inabra",
+            level: charInfo.level || 687,
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao buscar level da API do Tibia:", err);
+      }
+
+      // 2. Carregar dados do Supabase
       try {
         const cachedPrices = window.localStorage.getItem("tibia-imbuement-prices");
         if (cachedPrices) {
-          applyImbuementPrices(JSON.parse(cachedPrices) as Partial<ImbuementPrices>);
+          const parsed = JSON.parse(cachedPrices);
+          if (parsed.gtPrice) setGtPrice(parsed.gtPrice);
         }
       } catch (err) {
-        console.error("Erro ao carregar preços locais de imbuement:", err);
+        console.error("Erro ao carregar preços locais:", err);
       }
 
       if (!supabaseUrl || !supabaseAnonKey) {
@@ -268,16 +209,9 @@ export default function Home() {
           setHunts(Number(data.hunts) || 0);
           setTcPrice(Number(data.tc_price) || 42500);
           setTotalXpGained(Number(data.total_xp) || 0);
-          const savedExperience = Number(data.current_experience);
-          if (Number.isFinite(savedExperience) && savedExperience > 0) {
-            setCurrentExperience(savedExperience);
-          }
           setHistory(data.history || []);
           setSoldTcTotal(Number(data.sold_tc_total) || 0);
           setSoldBrlTotal(Number(data.sold_brl_total) || 0);
-          if (data.imbuement_prices && typeof data.imbuement_prices === "object") {
-            applyImbuementPrices(data.imbuement_prices as Partial<ImbuementPrices>);
-          }
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
@@ -286,41 +220,8 @@ export default function Home() {
       }
     }
 
-    loadDataFromSupabase();
-  }, [applyImbuementPrices]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    try {
-      window.localStorage.setItem("tibia-imbuement-prices", JSON.stringify({
-        gtPrice,
-        protectiveCharmPrice,
-        sabretoothPrice,
-        vexclawTalonPrice,
-        ropeBeltPrice,
-        silencerClawPrice,
-        grimeleechWingPrice,
-        vampireTeethPrice,
-        bloodyPincerPrice,
-        deadBrainPrice,
-      }));
-    } catch (err) {
-      console.error("Erro ao salvar preços locais de imbuement:", err);
-    }
-  }, [
-    isLoaded,
-    gtPrice,
-    protectiveCharmPrice,
-    sabretoothPrice,
-    vexclawTalonPrice,
-    ropeBeltPrice,
-    silencerClawPrice,
-    grimeleechWingPrice,
-    vampireTeethPrice,
-    bloodyPincerPrice,
-    deadBrainPrice,
-  ]);
+    loadAllData();
+  }, []);
 
   const saveDataToSupabase = async (
     newLoot: number,
@@ -330,12 +231,8 @@ export default function Home() {
     newTcPrice: number,
     newXpGainedTotal: number,
     newHistory: Hunt[],
-    newLevel: number = currentLevel,
-    newPercentage: number = manualPercentage,
     newSoldTcTotal: number = soldTcTotal,
-    newSoldBrlTotal: number = soldBrlTotal,
-    newCurrentExperience: number = currentExperience,
-    newImbuementPrices: ImbuementPrices = imbuementPrices
+    newSoldBrlTotal: number = soldBrlTotal
   ) => {
     if (!supabaseUrl || !supabaseAnonKey) return;
 
@@ -349,50 +246,16 @@ export default function Home() {
         tibia_coins: newTcPrice > 0 ? newBalance / newTcPrice : 0,
         tc_price: newTcPrice,
         total_xp: newXpGainedTotal,
-        current_level: newLevel,
-        manual_percentage: newPercentage,
-        current_experience: newCurrentExperience,
         history: newHistory,
         sold_tc_total: newSoldTcTotal,
         sold_brl_total: newSoldBrlTotal,
-        imbuement_prices: newImbuementPrices,
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("tibia_dashboard").upsert(dashboardData);
-      if (error) {
-        const missingPricesColumn =
-          error.code === "PGRST204" || error.code === "42703" || error.message.includes("imbuement_prices");
-
-        if (!missingPricesColumn) throw error;
-
-        const legacyDashboardData = { ...dashboardData };
-        Reflect.deleteProperty(legacyDashboardData, "imbuement_prices");
-        const { error: legacyError } = await supabase.from("tibia_dashboard").upsert(legacyDashboardData);
-        if (legacyError) throw legacyError;
-        console.warn("A coluna imbuement_prices ainda não existe no Supabase; preços mantidos no navegador.");
-      }
+      await supabase.from("tibia_dashboard").upsert(dashboardData);
     } catch (err) {
       console.error("Erro ao salvar no Supabase:", err);
     }
-  };
-
-  const persistImbuementPrices = () => {
-    void saveDataToSupabase(
-      loot,
-      supplies,
-      balance,
-      hunts,
-      tcPrice,
-      totalXpGained,
-      history,
-      currentLevel,
-      manualPercentage,
-      soldTcTotal,
-      soldBrlTotal,
-      currentExperience,
-      imbuementPrices
-    );
   };
 
   const applyImbuementDeduction = async () => {
@@ -402,28 +265,13 @@ export default function Home() {
     }
 
     const updatedBalance = balance - bestTotalCost;
-
     setBalance(updatedBalance);
     setStrikeQty(0);
     setVoidQty(0);
     setVampirismQty(0);
 
-    await saveDataToSupabase(
-      loot,
-      supplies,
-      updatedBalance,
-      hunts,
-      tcPrice,
-      totalXpGained,
-      history,
-      currentLevel,
-      manualPercentage,
-      soldTcTotal,
-      soldBrlTotal,
-      currentExperience
-    );
-
-    alert(`Despesa de Imbuement de ${bestTotalCost.toLocaleString("pt-BR")} GP abatida do Saldo e das TCs com sucesso!`);
+    await saveDataToSupabase(loot, supplies, updatedBalance, hunts, tcPrice, totalXpGained, history);
+    alert(`Despesa de Imbuement de ${bestTotalCost.toLocaleString("pt-BR")} GP abatida com sucesso!`);
   };
 
   function importHunt() {
@@ -437,10 +285,8 @@ export default function Home() {
     const parseTibiaValue = (pattern: RegExp) => {
       const match = analyzer.match(pattern);
       if (!match) return 0;
-
       const rawValue = match[1].trim();
       const isNegative = rawValue.includes("-");
-
       const isKK = /kk/i.test(rawValue);
       const isK = /k/i.test(rawValue) && !isKK;
 
@@ -456,7 +302,6 @@ export default function Home() {
 
       clean = clean.replace(/[.,]/g, "");
       const num = parseInt(clean, 10) || 0;
-
       return isNegative ? -num : num;
     };
 
@@ -466,9 +311,7 @@ export default function Home() {
     const hasXp = /(?:^|[\r\n])\s*XP Gain:\s*/i.test(analyzer);
 
     if (!hasLoot || !hasSupplies || !hasBalance || !hasXp) {
-      setErrorMessage(
-        "Formato inválido! Certifique-se de copiar todo o bloco do Hunt Analyzer do Tibia."
-      );
+      setErrorMessage("Formato inválido! Certifique-se de copiar todo o bloco do Hunt Analyzer.");
       return;
     }
 
@@ -484,17 +327,6 @@ export default function Home() {
     const updatedBalance = balance + balanceValue;
     const updatedXpGainedTotal = totalXpGained + xpValue;
     const updatedHunts = hunts + 1;
-    const updatedExperience = currentExperience + xpValue;
-    const updatedProgress = progressFromExperience(updatedExperience);
-
-    if (updatedProgress.level > currentLevel) {
-      if (levelUpTimeoutRef.current) clearTimeout(levelUpTimeoutRef.current);
-      setShowLevelUpGif(true);
-      levelUpTimeoutRef.current = setTimeout(() => {
-        setShowLevelUpGif(false);
-        levelUpTimeoutRef.current = null;
-      }, 4000);
-    }
 
     const newHunt: Hunt = {
       id: Date.now(),
@@ -514,7 +346,6 @@ export default function Home() {
     setTotalXpGained(updatedXpGainedTotal);
     setHunts(updatedHunts);
     setHistory(updatedHistory);
-    setCurrentExperience(updatedExperience);
     setAnalyzer("");
 
     saveDataToSupabase(
@@ -524,12 +355,7 @@ export default function Home() {
       updatedHunts,
       tcPrice,
       updatedXpGainedTotal,
-      updatedHistory,
-      updatedProgress.level,
-      updatedProgress.percentage,
-      soldTcTotal,
-      soldBrlTotal,
-      updatedExperience
+      updatedHistory
     );
   }
 
@@ -541,7 +367,6 @@ export default function Home() {
     }
 
     const brlArrecadado = tcQty * (50 / 250);
-
     const updatedSoldTc = soldTcTotal + tcQty;
     const updatedSoldBrl = soldBrlTotal + brlArrecadado;
 
@@ -551,36 +376,12 @@ export default function Home() {
     setSoldTcTotal(updatedSoldTc);
     setSoldBrlTotal(updatedSoldBrl);
 
-    await saveDataToSupabase(
-      0,
-      0,
-      0,
-      hunts,
-      tcPrice,
-      totalXpGained,
-      history,
-      currentLevel,
-      manualPercentage,
-      updatedSoldTc,
-      updatedSoldBrl
-    );
+    await saveDataToSupabase(0, 0, 0, hunts, tcPrice, totalXpGained, history, updatedSoldTc, updatedSoldBrl);
 
     setShowSellModal(false);
     setTcToSellInput("");
     alert(`Lançamento realizado! ${tcQty} TCs vendidas por R$ ${brlArrecadado.toFixed(2)}.`);
   };
-
-  function handleClearDataClick() {
-    setActionToConfirm("clearAll");
-    setHuntToDelete(null);
-    setShowAuthModal(true);
-  }
-
-  function handleDeleteHuntClick(hunt: Hunt) {
-    setActionToConfirm("deleteHunt");
-    setHuntToDelete(hunt);
-    setShowAuthModal(true);
-  }
 
   async function confirmAuthAction() {
     if (authUsername === "panicao" && authPassword === "panicao") {
@@ -593,7 +394,7 @@ export default function Home() {
         setSoldTcTotal(0);
         setSoldBrlTotal(0);
         setHistory([]);
-        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], currentLevel, manualPercentage, 0, 0);
+        await saveDataToSupabase(0, 0, 0, 0, tcPrice, 0, [], 0, 0);
         alert("Todos os dados foram apagados com sucesso!");
       } else if (actionToConfirm === "deleteHunt" && huntToDelete) {
         const updatedHistory = history.filter((h) => h.id !== huntToDelete.id);
@@ -602,11 +403,6 @@ export default function Home() {
         const updatedBalance = balance - huntToDelete.balance;
         const updatedXpGainedTotal = totalXpGained - (huntToDelete.xp || 0);
         const updatedHunts = Math.max(hunts - 1, 0);
-        const updatedExperience = Math.max(
-          0,
-          currentExperience - (huntToDelete.xp || 0)
-        );
-        const updatedProgress = progressFromExperience(updatedExperience);
 
         setLoot(updatedLoot);
         setSupplies(updatedSupplies);
@@ -614,7 +410,6 @@ export default function Home() {
         setTotalXpGained(updatedXpGainedTotal);
         setHunts(updatedHunts);
         setHistory(updatedHistory);
-        setCurrentExperience(updatedExperience);
 
         await saveDataToSupabase(
           updatedLoot,
@@ -623,12 +418,7 @@ export default function Home() {
           updatedHunts,
           tcPrice,
           updatedXpGainedTotal,
-          updatedHistory,
-          updatedProgress.level,
-          updatedProgress.percentage,
-          soldTcTotal,
-          soldBrlTotal,
-          updatedExperience
+          updatedHistory
         );
         alert("Hunt removida com sucesso!");
       }
@@ -642,11 +432,6 @@ export default function Home() {
       alert("Usuário ou senha incorretos!");
     }
   }
-
-  const handleTcPriceChange = (val: number) => {
-    setTcPrice(val);
-    saveDataToSupabase(loot, supplies, balance, hunts, val, totalXpGained, history, currentLevel, manualPercentage);
-  };
 
   const tcToSellNum = parseInt(tcToSellInput, 10) || 0;
   const brlToReceive = tcToSellNum * (50 / 250);
@@ -668,7 +453,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL */}
+          {/* CARD DE PERFIL (Level puxado automaticamente da API) */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -684,41 +469,13 @@ export default function Home() {
                   alt={`Foto do ${charData.name}`} 
                   className="h-36 object-contain rounded border border-yellow-500/20 shadow-md"
                 />
-                {showLevelUpGif && (
-                  <img
-                    src="/level.gif"
-                    alt="Level up!"
-                    className="pointer-events-none absolute top-1/2 left-1/2 z-10 h-36 w-36 -translate-x-1/2 -translate-y-1/2 object-contain"
-                  />
-                )}
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center mb-3">
-                <span className="text-sm font-semibold text-gray-300">Level Atual</span>
+              <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-300">Level Atual (API)</span>
                 <span className="text-2xl font-bold text-yellow-400 font-mono">
-                  {currentLevel}
+                  {charData.level}
                 </span>
-              </div>
-
-              <div className="bg-[#0B1020] p-3 rounded-lg border border-slate-800 space-y-2">
-                <div className="flex justify-between items-center text-xs text-gray-300">
-                  <span>Progresso do Level ({currentLevel + 1})</span>
-                  <span className="text-emerald-400 font-mono">
-                    {manualPercentage.toFixed(2)}%
-                  </span>
-                </div>
-
-                <div className="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-700">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-cyan-400 h-full transition-all duration-300"
-                    style={{ width: `${manualPercentage}%` }}
-                  />
-                </div>
-
-                <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                  <span>{manualPercentage.toFixed(2)}% Concluído</span>
-                  <span>{(100 - manualPercentage).toFixed(2)}% Restante</span>
-                </div>
               </div>
             </div>
           </div>
@@ -785,23 +542,12 @@ export default function Home() {
 
         </div>
 
-        {/* MÓDULO CALCULADORA DE IMBUEMENT & COMPARADOR DETALHADO */}
+        {/* MÓDULO CALCULADORA DE IMBUEMENT */}
         <div className="mt-6 bg-[#151B31] p-6 rounded-xl border border-cyan-500/30">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <img 
-                src={GOLD_TOKEN_ICON} 
-                alt="Gold Token" 
-                className="w-8 h-8 object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-              <img
-                src="/Shrine.gif"
-                alt="Shrine"
-                className="w-10 h-10 shrink-0 object-contain"
-              />
+              <img src={GOLD_TOKEN_ICON} alt="Gold Token" className="w-8 h-8 object-contain" />
+              <img src="/Shrine.gif" alt="Shrine" className="w-10 h-10 shrink-0 object-contain" />
               <div>
                 <h2 className="text-2xl font-bold text-cyan-400">Calculadora & Despesa de Imbuements</h2>
                 <p className="text-xs text-gray-400">Compare Gold Tokens vs. Produtos de Criatura em tempo real</p>
@@ -813,28 +559,18 @@ export default function Home() {
                 type="number"
                 value={gtPrice}
                 onChange={(e) => setGtPrice(Math.max(0, Number(e.target.value) || 0))}
-                onBlur={persistImbuementPrices}
                 className="bg-transparent text-right font-mono font-bold text-yellow-400 focus:outline-none w-28"
               />
             </div>
           </div>
 
-          {/* GRID COM OS 3 IMBUEMENTS E SEUS RESPECTIVOS PRODUTOS DE CRIATURA */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            
-            {/* POWERFUL STRIKE (CRÍTICO) */}
+            {/* POWERFUL STRIKE */}
             <div className="bg-[#0B1020] p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <img 
-                      src={POWERFUL_STRIKE_ICON} 
-                      alt="Powerful Strike" 
-                      className="w-8 h-8 object-contain" 
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+                    <img src={POWERFUL_STRIKE_ICON} alt="Powerful Strike" className="w-8 h-8 object-contain" />
                     <div>
                       <h3 className="font-bold text-yellow-400 text-sm">Powerful Strike</h3>
                       <p className="text-[10px] text-gray-400">Crit (+30%)</p>
@@ -851,7 +587,6 @@ export default function Home() {
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400">20x Protective Charm</span>
@@ -859,7 +594,6 @@ export default function Home() {
                       type="number"
                       value={protectiveCharmPrice}
                       onChange={(e) => setProtectiveCharmPrice(Number(e.target.value) || 0)}
-                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -869,7 +603,6 @@ export default function Home() {
                       type="number"
                       value={sabretoothPrice}
                       onChange={(e) => setSabretoothPrice(Number(e.target.value) || 0)}
-                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -879,39 +612,23 @@ export default function Home() {
                       type="number"
                       value={vexclawTalonPrice}
                       onChange={(e) => setVexclawTalonPrice(Number(e.target.value) || 0)}
-                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
-                  <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
-                    <span className="text-gray-400 flex items-center gap-1.5">
-                      <img src={SHRINE_ICON} alt="Shrine" className="w-5 h-5 object-contain" />
-                      Taxa Shrine:
-                    </span>
-                    <span className="text-gray-300 font-mono">150.000 GP</span>
-                  </div>
                 </div>
               </div>
-
               <div className="mt-4 pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
                 <span className="text-gray-400">Custo Total Itens:</span>
                 <span className="font-mono font-bold text-emerald-400">{strikeItemCost.toLocaleString("pt-BR")} GP</span>
               </div>
             </div>
 
-            {/* POWERFUL VOID (MANA) */}
+            {/* POWERFUL VOID */}
             <div className="bg-[#0B1020] p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <img 
-                      src={POWERFUL_VOID_ICON} 
-                      alt="Powerful Void" 
-                      className="w-8 h-8 object-contain" 
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+                    <img src={POWERFUL_VOID_ICON} alt="Powerful Void" className="w-8 h-8 object-contain" />
                     <div>
                       <h3 className="font-bold text-cyan-400 text-sm">Powerful Void</h3>
                       <p className="text-[10px] text-gray-400">Mana Leech (+8%)</p>
@@ -928,7 +645,6 @@ export default function Home() {
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400">25x Rope Belt</span>
@@ -936,7 +652,6 @@ export default function Home() {
                       type="number"
                       value={ropeBeltPrice}
                       onChange={(e) => setRopeBeltPrice(Number(e.target.value) || 0)}
-                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -946,7 +661,6 @@ export default function Home() {
                       type="number"
                       value={silencerClawPrice}
                       onChange={(e) => setSilencerClawPrice(Number(e.target.value) || 0)}
-                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -956,39 +670,23 @@ export default function Home() {
                       type="number"
                       value={grimeleechWingPrice}
                       onChange={(e) => setGrimeleechWingPrice(Number(e.target.value) || 0)}
-                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
-                  <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
-                    <span className="text-gray-400 flex items-center gap-1.5">
-                      <img src={SHRINE_ICON} alt="Shrine" className="w-5 h-5 object-contain" />
-                      Taxa Shrine:
-                    </span>
-                    <span className="text-gray-300 font-mono">150.000 GP</span>
-                  </div>
                 </div>
               </div>
-
               <div className="mt-4 pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
                 <span className="text-gray-400">Custo Total Itens:</span>
                 <span className="font-mono font-bold text-emerald-400">{voidItemCost.toLocaleString("pt-BR")} GP</span>
               </div>
             </div>
 
-            {/* POWERFUL VAMPIRISM (LIFE) */}
+            {/* POWERFUL VAMPIRISM */}
             <div className="bg-[#0B1020] p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <img 
-                      src={POWERFUL_VAMPIRISM_ICON} 
-                      alt="Powerful Vampirism" 
-                      className="w-8 h-8 object-contain" 
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+                    <img src={POWERFUL_VAMPIRISM_ICON} alt="Powerful Vampirism" className="w-8 h-8 object-contain" />
                     <div>
                       <h3 className="font-bold text-red-400 text-sm">Powerful Vampirism</h3>
                       <p className="text-[10px] text-gray-400">Life Leech (+25%)</p>
@@ -1005,7 +703,6 @@ export default function Home() {
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400">25x Vampire Teeth</span>
@@ -1013,7 +710,6 @@ export default function Home() {
                       type="number"
                       value={vampireTeethPrice}
                       onChange={(e) => setVampireTeethPrice(Number(e.target.value) || 0)}
-                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -1023,7 +719,6 @@ export default function Home() {
                       type="number"
                       value={bloodyPincerPrice}
                       onChange={(e) => setBloodyPincerPrice(Number(e.target.value) || 0)}
-                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
@@ -1033,29 +728,18 @@ export default function Home() {
                       type="number"
                       value={deadBrainPrice}
                       onChange={(e) => setDeadBrainPrice(Number(e.target.value) || 0)}
-                      onBlur={persistImbuementPrices}
                       className="w-20 bg-[#151B31] p-1 text-right rounded border border-slate-800 text-gray-200 font-mono"
                     />
                   </div>
-                  <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 text-[11px]">
-                    <span className="text-gray-400 flex items-center gap-1.5">
-                      <img src={SHRINE_ICON} alt="Shrine" className="w-5 h-5 object-contain" />
-                      Taxa Shrine:
-                    </span>
-                    <span className="text-gray-300 font-mono">150.000 GP</span>
-                  </div>
                 </div>
               </div>
-
               <div className="mt-4 pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
                 <span className="text-gray-400">Custo Total Itens:</span>
                 <span className="font-mono font-bold text-emerald-400">{vampirismItemCost.toLocaleString("pt-BR")} GP</span>
               </div>
             </div>
-
           </div>
 
-          {/* DICA DE ECONOMIA E BOTÃO DE ABATIMENTO */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-[#0B1020] p-4 rounded-xl border border-slate-800">
             <div>
               <p className="text-xs text-gray-400 mb-2">Comparação individual por imbuement:</p>
@@ -1072,9 +756,6 @@ export default function Home() {
                         </span>
                         <span className="text-gray-400"> — economia de {item.savings.toLocaleString("pt-BR")} GP</span>
                       </p>
-                      <p className="text-xs text-gray-400">
-                        Gold Tokens: {item.goldTokenCost.toLocaleString("pt-BR")} GP · Creature Products: {item.creatureProductCost.toLocaleString("pt-BR")} GP
-                      </p>
                     </div>
                   ))}
                 </div>
@@ -1090,7 +771,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* BOTÃO / CARD VENDER TIBIA COIN E MÉTRICAS DE VENDAS */}
+        {/* VENDER TIBIA COIN */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div 
             onClick={() => setShowSellModal(true)}
@@ -1129,7 +810,7 @@ export default function Home() {
           <input
             type="number"
             value={tcPrice}
-            onChange={(e) => handleTcPriceChange(Number(e.target.value))}
+            onChange={(e) => setTcPrice(Number(e.target.value))}
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
           />
         </div>
@@ -1158,7 +839,11 @@ export default function Home() {
               Importar Hunt
             </button>
             <button
-              onClick={handleClearDataClick}
+              onClick={() => {
+                setActionToConfirm("clearAll");
+                setHuntToDelete(null);
+                setShowAuthModal(true);
+              }}
               className="bg-red-600 px-6 py-2 rounded font-bold hover:bg-red-500 transition"
             >
               Limpar Tudo
@@ -1235,7 +920,11 @@ export default function Home() {
                           </td>
                           <td className="text-center">
                             <button
-                              onClick={() => handleDeleteHuntClick(hunt)}
+                              onClick={() => {
+                                setActionToConfirm("deleteHunt");
+                                setHuntToDelete(hunt);
+                                setShowAuthModal(true);
+                              }}
                               className="bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white px-2.5 py-1 rounded text-xs font-bold transition border border-red-500/30"
                               title="Excluir apenas esta hunt"
                             >
@@ -1253,7 +942,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* MODAL POP-UP DE VENDER TIBIA COIN */}
+      {/* MODAL VENDER TIBIA COIN */}
       {showSellModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#151B31] p-6 rounded-xl w-full max-w-md border border-yellow-500/40 shadow-2xl">
@@ -1261,12 +950,10 @@ export default function Home() {
               <img src={TIBIA_COIN_ICON} alt="Tibia Coin" className="w-8 h-8 object-contain" />
               <h2 className="text-2xl font-bold text-yellow-400">Vender Tibia Coin</h2>
             </div>
-
             <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 mb-4 flex justify-between items-center">
               <span className="text-sm text-gray-400">Saldo de TC Atual:</span>
               <span className="text-xl font-bold text-yellow-400 font-mono">{tibiaCoins.toFixed(1)} TC</span>
             </div>
-
             <div className="mb-4">
               <label className="block text-sm font-semibold mb-2 text-gray-300">
                 Quantas TC você vai vender?
@@ -1279,14 +966,12 @@ export default function Home() {
                 className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500 font-mono text-lg text-white"
               />
             </div>
-
             <div className="bg-[#0B1020] p-4 rounded-lg border border-slate-800 mb-6 flex justify-between items-center">
               <span className="text-sm text-gray-400">Quantos R$ foi arrecadado:</span>
               <span className="text-xl font-bold text-emerald-400 font-mono">
                 R$ {brlToReceive.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
-
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {
