@@ -44,7 +44,7 @@ const DEFAULT_IMBUEMENT_PRICES: ImbuementPrices = {
 };
 
 export default function Home() {
-  const CHARACTER_NAME = "Greey Kina";
+  const CHARACTER_NAME = "Panico Kina";
   const OUTFIT_IMAGE_URL = "/greey-kina.png";
 
   const CRYSTAL_COIN_ICON = "/Crystal_Coin.gif";
@@ -63,9 +63,11 @@ export default function Home() {
   const [charData, setCharData] = useState({
     name: CHARACTER_NAME,
     vocation: "Elite Knight",
-    world: "Inabra",
-    level: 687, // Valor padrão caso a API demore ou falhe
+    world: "Rubinot",
+    level: 687,
   });
+
+  const [inputLevel, setInputLevel] = useState("687");
 
   const [analyzer, setAnalyzer] = useState("");
   const [tcPrice, setTcPrice] = useState(42500);
@@ -157,29 +159,9 @@ export default function Home() {
     0
   );
 
-  // BUSCAR DADOS DO SUPABASE E DA API DO TIBIA AUTOMATICAMENTE
+  // CARREGAR DADOS DO SUPABASE
   useEffect(() => {
     async function loadAllData() {
-      // 1. Buscar Level Atual na API Oficial do Tibia (TibiaData v4)
-      try {
-        const encodedName = encodeURIComponent(CHARACTER_NAME);
-        const response = await fetch(`https://api.tibiadata.com/v4/character/${encodedName}`);
-        const json = await response.json();
-        
-        if (json && json.characters && json.characters.data && json.characters.data.character) {
-          const charInfo = json.characters.data.character;
-          setCharData({
-            name: charInfo.name || CHARACTER_NAME,
-            vocation: charInfo.vocation || "Elite Knight",
-            world: charInfo.world || "Inabra",
-            level: charInfo.level || 687,
-          });
-        }
-      } catch (err) {
-        console.error("Erro ao buscar level da API do Tibia:", err);
-      }
-
-      // 2. Carregar dados do Supabase
       try {
         const cachedPrices = window.localStorage.getItem("tibia-imbuement-prices");
         if (cachedPrices) {
@@ -212,6 +194,11 @@ export default function Home() {
           setHistory(data.history || []);
           setSoldTcTotal(Number(data.sold_tc_total) || 0);
           setSoldBrlTotal(Number(data.sold_brl_total) || 0);
+          
+          if (data.char_level) {
+            setCharData(prev => ({ ...prev, level: Number(data.char_level) }));
+            setInputLevel(String(data.char_level));
+          }
         }
       } catch (err) {
         console.error("Erro na conexão com Supabase:", err);
@@ -232,7 +219,8 @@ export default function Home() {
     newXpGainedTotal: number,
     newHistory: Hunt[],
     newSoldTcTotal: number = soldTcTotal,
-    newSoldBrlTotal: number = soldBrlTotal
+    newSoldBrlTotal: number = soldBrlTotal,
+    newCharLevel: number = charData.level
   ) => {
     if (!supabaseUrl || !supabaseAnonKey) return;
 
@@ -249,6 +237,7 @@ export default function Home() {
         history: newHistory,
         sold_tc_total: newSoldTcTotal,
         sold_brl_total: newSoldBrlTotal,
+        char_level: newCharLevel,
         updated_at: new Date().toISOString(),
       };
 
@@ -256,6 +245,18 @@ export default function Home() {
     } catch (err) {
       console.error("Erro ao salvar no Supabase:", err);
     }
+  };
+
+  const handleUpdateLevel = async () => {
+    const newLvl = parseInt(inputLevel, 10);
+    if (isNaN(newLvl) || newLvl <= 0) {
+      alert("Por favor, digite um level válido.");
+      return;
+    }
+
+    setCharData(prev => ({ ...prev, level: newLvl }));
+    await saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, soldTcTotal, soldBrlTotal, newLvl);
+    alert(`Level atualizado para ${newLvl} com sucesso!`);
   };
 
   const applyImbuementDeduction = async () => {
@@ -453,7 +454,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
           
-          {/* CARD DE PERFIL (Level puxado automaticamente da API) */}
+          {/* CARD DE PERFIL COM EDIÇÃO RÁPIDA DE LEVEL */}
           <div className="bg-[#151B31] p-5 rounded-xl border border-yellow-500/30 xl:col-span-2 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-2">
@@ -472,10 +473,21 @@ export default function Home() {
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
-                <span className="text-sm font-semibold text-gray-300">Level Atual (API)</span>
-                <span className="text-2xl font-bold text-yellow-400 font-mono">
-                  {charData.level}
-                </span>
+                <span className="text-sm font-semibold text-gray-300">Level Atual:</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={inputLevel}
+                    onChange={(e) => setInputLevel(e.target.value)}
+                    className="w-20 bg-[#0B1020] text-yellow-400 font-mono font-bold text-lg text-center p-1 rounded border border-slate-700 focus:outline-none focus:border-yellow-500"
+                  />
+                  <button
+                    onClick={handleUpdateLevel}
+                    className="bg-yellow-500 hover:bg-yellow-400 text-black px-3 py-1.5 rounded text-xs font-bold transition"
+                  >
+                    Salvar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
