@@ -159,7 +159,7 @@ export default function Home() {
     0
   );
 
-  // CARREGAR DADOS DO SUPABASE
+  // CARREGAR DADOS DO SUPABASE (INCLUINDO PREÇO DA TC E LEVEL)
   useEffect(() => {
     async function loadAllData() {
       try {
@@ -257,6 +257,11 @@ export default function Home() {
     setCharData(prev => ({ ...prev, level: newLvl }));
     await saveDataToSupabase(loot, supplies, balance, hunts, tcPrice, totalXpGained, history, soldTcTotal, soldBrlTotal, newLvl);
     alert(`Level atualizado para ${newLvl} com sucesso!`);
+  };
+
+  const handleTcPriceChange = (newPrice: number) => {
+    setTcPrice(newPrice);
+    saveDataToSupabase(loot, supplies, balance, hunts, newPrice, totalXpGained, history, soldTcTotal, soldBrlTotal, charData.level);
   };
 
   const applyImbuementDeduction = async () => {
@@ -822,7 +827,7 @@ export default function Home() {
           <input
             type="number"
             value={tcPrice}
-            onChange={(e) => setTcPrice(Number(e.target.value))}
+            onChange={(e) => handleTcPriceChange(Number(e.target.value))}
             className="w-full bg-[#0B1020] p-3 rounded border border-gray-800 focus:outline-none focus:border-yellow-500"
           />
         </div>
