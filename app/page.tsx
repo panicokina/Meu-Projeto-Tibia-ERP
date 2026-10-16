@@ -44,8 +44,8 @@ const DEFAULT_IMBUEMENT_PRICES: ImbuementPrices = {
 };
 
 export default function Home() {
-  const CHARACTER_NAME = "Greey Kina";
-  const OUTFIT_IMAGE_URL = "/greey-kina.png";
+  const CHARACTER_NAME = "Panico Kina";
+  const OUTFIT_IMAGE_URL = "/panico-kina.png";
 
   const CRYSTAL_COIN_ICON = "/Crystal_Coin.gif";
   const TIBIA_COIN_ICON = "/Tibia_Coins.gif";
